@@ -12,7 +12,7 @@ apiVersion: pkg.crossplane.io/v1
 kind: Provider
 metadata: {name: provider-forgejo}
 spec:
-  package: registry.example.org/providers/forgejo:<VERSION>-<commit>
+  package: docker.io/vincentbrobald/provider-forgejo:<VERSION>-<commit>
 ---
 apiVersion: forgejo.m.crossplane.brobald.be/v1beta1
 kind: ClusterProviderConfig
