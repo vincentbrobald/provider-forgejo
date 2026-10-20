@@ -1,0 +1,221 @@
+package provider
+
+import (
+	"context"
+	"fmt"
+	"slices"
+	"time"
+
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"codeberg.org/mvdkleijn/forgejo-sdk/forgejo/v3"
+)
+
+// Ensure the implementation satisfies the expected interfaces.
+var (
+	_ datasource.DataSource              = &deployKeyDataSource{}
+	_ datasource.DataSourceWithConfigure = &deployKeyDataSource{}
+)
+
+// deployKeyDataSource is the data source implementation.
+type deployKeyDataSource struct {
+	client *forgejo.Client
+}
+
+// deployKeyDataSourceModel maps the data source schema data.
+// https://pkg.go.dev/codeberg.org/mvdkleijn/forgejo-sdk/forgejo/v3#CreateKeyOption
+type deployKeyDataSourceModel struct {
+	RepositoryID types.Int64  `tfsdk:"repository_id"`
+	KeyID        types.Int64  `tfsdk:"key_id"`
+	Key          types.String `tfsdk:"key"`
+	URL          types.String `tfsdk:"url"`
+	Title        types.String `tfsdk:"title"`
+	Fingerprint  types.String `tfsdk:"fingerprint"`
+	Created      types.String `tfsdk:"created_at"`
+	ReadOnly     types.Bool   `tfsdk:"read_only"`
+}
+
+// Metadata returns the data source type name.
+func (d *deployKeyDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_deploy_key"
+}
+
+// Schema defines the schema for the data source.
+func (d *deployKeyDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		Description: "Forgejo repository deploy key data source.",
+
+		Attributes: map[string]schema.Attribute{
+			"repository_id": schema.Int64Attribute{
+				Description: "Numeric identifier of the repository.",
+				Required:    true,
+			},
+			"key_id": schema.Int64Attribute{
+				Description: "Numeric identifier of the deploy key.",
+				Computed:    true,
+			},
+			"key": schema.StringAttribute{
+				Description: "Armored SSH key.",
+				Computed:    true,
+			},
+			"url": schema.StringAttribute{
+				Description: "URL of the deploy key.",
+				Computed:    true,
+			},
+			"title": schema.StringAttribute{
+				Description: "Title of the deploy key.",
+				Required:    true,
+			},
+			"fingerprint": schema.StringAttribute{
+				Description: "Fingerprint of the deploy key.",
+				Computed:    true,
+			},
+			"created_at": schema.StringAttribute{
+				Description: "Time at which the deploy key was created.",
+				Computed:    true,
+			},
+			"read_only": schema.BoolAttribute{
+				Description: "Does the key have only read access?",
+				Computed:    true,
+			},
+		},
+	}
+}
+
+// Configure adds the provider configured client to the data source.
+func (d *deployKeyDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	// Prevent panic if the provider has not been configured.
+	if req.ProviderData == nil {
+		return
+	}
+
+	client, ok := req.ProviderData.(*forgejo.Client)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Data Source Configure Type",
+			fmt.Sprintf(
+				"Expected *forgejo.Client, got: %T. Please report this issue to the provider developers.",
+				req.ProviderData,
+			),
+		)
+
+		return
+	}
+
+	d.client = client
+}
+
+// Read refreshes the Terraform state with the latest data.
+func (d *deployKeyDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	defer un(trace(ctx, "Read deploy key data source"))
+
+	var (
+		repo repositoryResourceModel
+		data deployKeyDataSourceModel
+	)
+
+	// Read Terraform configuration data into model
+	diags := req.Config.Get(ctx, &data)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Use Forgejo client to get repository
+	rep, diags := getRepositoryByID(
+		ctx,
+		d.client,
+		data.RepositoryID.ValueInt64(),
+	)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Map response body to model
+	repo.from(rep)
+
+	tflog.Info(ctx, "List deploy keys", map[string]any{
+		"user": repo.Owner.ValueString(),
+		"repo": repo.Name.ValueString(),
+	})
+
+	// Use Forgejo client to list deploy keys
+	keys, res, err := d.client.ListDeployKeys(
+		repo.Owner.ValueString(),
+		repo.Name.ValueString(),
+		forgejo.ListDeployKeysOptions{
+			ListOptions: forgejo.ListOptions{
+				Page: -1,
+			},
+		},
+	)
+	if err != nil {
+		var msg string
+		if res == nil {
+			msg = fmt.Sprintf("Unknown error with nil response: %s", err)
+		} else {
+			tflog.Error(ctx, "Error", map[string]any{
+				"status": res.Status,
+			})
+
+			switch res.StatusCode {
+			case 404:
+				msg = fmt.Sprintf(
+					"Deploy keys with user %s and repo %s not found: %s",
+					repo.Owner.String(),
+					repo.Name.String(),
+					err,
+				)
+			default:
+				msg = fmt.Sprintf(
+					"Unknown error (status %d): %s",
+					res.StatusCode,
+					err,
+				)
+			}
+		}
+		resp.Diagnostics.AddError("Unable to list deploy keys", msg)
+
+		return
+	}
+
+	// Search for deploy key with given name
+	idx := slices.IndexFunc(keys, func(k *forgejo.DeployKey) bool {
+		return k.Title == data.Title.ValueString()
+	})
+	if idx == -1 {
+		resp.Diagnostics.AddError(
+			"Unable to find deploy key by title",
+			fmt.Sprintf(
+				"Deploy key with user %s, repo %s and title %s not found",
+				repo.Owner.String(),
+				repo.Name.String(),
+				data.Title.String(),
+			),
+		)
+
+		return
+	}
+
+	// Map response body to model
+	data.KeyID = types.Int64Value(keys[idx].ID)
+	data.Key = types.StringValue(keys[idx].Key)
+	data.URL = types.StringValue(keys[idx].URL)
+	data.Title = types.StringValue(keys[idx].Title)
+	data.Fingerprint = types.StringValue(keys[idx].Fingerprint)
+	data.Created = types.StringValue(keys[idx].Created.Format(time.RFC3339))
+	data.ReadOnly = types.BoolValue(keys[idx].ReadOnly)
+
+	// Save data into Terraform state
+	diags = resp.State.Set(ctx, &data)
+	resp.Diagnostics.Append(diags...)
+}
+
+// NewDeployKeyDataSource is a helper function to simplify the provider implementation.
+func NewDeployKeyDataSource() datasource.DataSource {
+	return &deployKeyDataSource{}
+}

@@ -1,0 +1,39 @@
+apiVersion: repository.forgejo.crossplane.brobald.be/v1alpha1
+kind: Webhook
+metadata:
+  annotations:
+    meta.upbound.io/example-id: repository/v1alpha1/webhook
+  labels:
+    testing.upbound.io/example-name: example
+  name: example
+spec:
+  forProvider:
+    authorizationHeaderSecretRef:
+      key: example-key
+      name: example-secret
+      namespace: upbound-system
+    branchFilter: '*'
+    configSecretRef:
+      key: example-key
+      name: example-secret
+      namespace: upbound-system
+    events:
+    - push
+    repositoryIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: personal
+    type: forgejo
+
+---
+
+apiVersion: repository.forgejo.crossplane.brobald.be/v1alpha1
+kind: Repository
+metadata:
+  annotations:
+    meta.upbound.io/example-id: repository/v1alpha1/webhook
+  labels:
+    testing.upbound.io/example-name: personal
+  name: personal
+spec:
+  forProvider:
+    name: personal_test_repo

@@ -1,0 +1,4 @@
+// SPDX-FileCopyrightText: 2026 Vincent Brobald
+// SPDX-License-Identifier: MPL-2.0
+
+package controller

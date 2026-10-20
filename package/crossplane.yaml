@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: 2024 The Crossplane Authors <https://crossplane.io>
+# SPDX-FileCopyrightText: 2026 Vincent Brobald
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# From crossplane/upjet-provider-template, changed for provider-forgejo.
+
+apiVersion: meta.pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-forgejo
+spec:
+  capabilities:
+    - SafeStart

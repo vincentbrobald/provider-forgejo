@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: 2024 The Crossplane Authors <https://crossplane.io>
+# SPDX-FileCopyrightText: 2026 Vincent Brobald
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# From crossplane/upjet-provider-template, changed for provider-forgejo.
+
+apiVersion: forgejo.m.crossplane.brobald.be/v1beta1
+kind: ClusterProviderConfig
+metadata:
+  name: default
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      name: example-creds
+      namespace: crossplane-system
+      key: credentials

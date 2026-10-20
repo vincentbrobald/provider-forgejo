@@ -1,0 +1,19 @@
+package setvalidator
+
+import (
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+
+	"brobald.be/provider-forgejo/third_party/terraform-provider-forgejo/pkg/schemavalidator"
+)
+
+// RequiresTrueIfConfigured checks that any Bool values in the paths described by the
+// path.Expression are true if the current attribute value is configured to a non-empty
+// set.
+// If you require the value described by the path.Expression to be set,
+// combine this validator with the "AlsoRequires" validator.
+func RequiresTrueIfConfigured(expressions ...path.Expression) validator.Set {
+	return &schemavalidator.RequiresTrueIfConfiguredValidator{
+		Expressions: expressions,
+	}
+}

@@ -1,0 +1,34 @@
+apiVersion: user.forgejo.m.crossplane.brobald.be/v1alpha1
+kind: PersonalAccessToken
+metadata:
+  annotations:
+    meta.upbound.io/example-id: user/v1alpha1/personalaccesstoken
+  labels:
+    testing.upbound.io/example-name: test_token
+  name: test-token
+  namespace: crossplane-system
+spec:
+  forProvider:
+    name: test token
+    scopes:
+    - read:repository
+    user: test_user_defaults
+
+---
+
+apiVersion: user.forgejo.m.crossplane.brobald.be/v1alpha1
+kind: User
+metadata:
+  annotations:
+    meta.upbound.io/example-id: user/v1alpha1/personalaccesstoken
+  labels:
+    testing.upbound.io/example-name: test_user
+  name: test-user
+  namespace: crossplane-system
+spec:
+  forProvider:
+    email: test_user@localhost.localdomain
+    login: test_user
+    passwordSecretRef:
+      key: example-key
+      name: example-secret

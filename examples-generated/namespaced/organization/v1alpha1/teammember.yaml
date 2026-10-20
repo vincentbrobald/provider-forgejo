@@ -1,0 +1,67 @@
+apiVersion: organization.forgejo.m.crossplane.brobald.be/v1alpha1
+kind: TeamMember
+metadata:
+  annotations:
+    meta.upbound.io/example-id: organization/v1alpha1/teammember
+  labels:
+    testing.upbound.io/example-name: membership
+  name: membership
+  namespace: crossplane-system
+spec:
+  forProvider:
+    teamIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: team
+    user: test_user_defaults
+
+---
+
+apiVersion: organization.forgejo.m.crossplane.brobald.be/v1alpha1
+kind: Organization
+metadata:
+  annotations:
+    meta.upbound.io/example-id: organization/v1alpha1/teammember
+  labels:
+    testing.upbound.io/example-name: owner
+  name: owner
+  namespace: crossplane-system
+spec:
+  forProvider:
+    name: test_org
+
+---
+
+apiVersion: organization.forgejo.m.crossplane.brobald.be/v1alpha1
+kind: Team
+metadata:
+  annotations:
+    meta.upbound.io/example-id: organization/v1alpha1/teammember
+  labels:
+    testing.upbound.io/example-name: team
+  name: team
+  namespace: crossplane-system
+spec:
+  forProvider:
+    name: org_test_team
+    organizationId: ${forgejo_organization.owner.id}
+    unitsMap:
+      repo.code: read
+
+---
+
+apiVersion: user.forgejo.m.crossplane.brobald.be/v1alpha1
+kind: User
+metadata:
+  annotations:
+    meta.upbound.io/example-id: organization/v1alpha1/teammember
+  labels:
+    testing.upbound.io/example-name: test
+  name: test
+  namespace: crossplane-system
+spec:
+  forProvider:
+    email: test_user@localhost.localdomain
+    login: test_user
+    passwordSecretRef:
+      key: example-key
+      name: example-secret
