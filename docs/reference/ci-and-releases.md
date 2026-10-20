@@ -18,7 +18,9 @@ makes the robot with that password). Then, unless the image's config or a
 layer names the site (its domain, for one), the same tags go to Docker Hub,
 `docker.io/vincentbrobald/provider-forgejo`: the package the published copies
 of the lab use. Its credentials are Secret `dockerhub-push` (keys `username`,
-`token`) of the same namespace. Bump `VERSION` for a release worth naming.
+`token`) of the same namespace; the repository's overview there is
+`package/OVERVIEW.md` (and a one-line description), set at each push. Bump
+`VERSION` for a release worth naming.
 
 Every image carries the licenses of what it contains under `/licenses`
 (`make licenses`: go-licenses copies each dependency's license, and the

@@ -12,6 +12,7 @@ internal/tfprovider the Terraform provider run: the vendored one plus our own
 internal/clients/  ProviderConfig → Terraform provider configuration (from the Upjet template, adapted)
 internal/tfversion the vendored version
 apis/, internal/controller/, package/crds/, examples-generated/  generated (make generate)
+package/crossplane.yaml  the package's metadata; package/OVERVIEW.md: its Docker Hub overview
 cmd/provider       the provider's main; cmd/generator: Upjet's code generator
 hack/tfprovider    serves the provider (internal/tfprovider) to OpenTofu for `make schema` only
 hack/boilerplate.go.txt  header of the generated files (the Upjet template's: Apache-2.0)
