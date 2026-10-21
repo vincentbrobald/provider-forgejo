@@ -43,7 +43,9 @@ external name stays empty, references to the object never resolve, and after
 a provider restart Crossplane would create it again.
 
 A missing object (Forgejo answers 404) reads as "does not exist", so
-Crossplane creates it; a missing *repository* stays an error.
+Crossplane creates it. So does an object whose repository (or team) is
+missing: it can't exist without it, and deleting it must not wait for it
+(creating it still fails, visibly, until the repository exists).
 
 **Credentials in errors:** Forgejo repeats a rejected password in its
 error (it tries it as a token too), and such errors land in the managed

@@ -6,6 +6,8 @@ package config
 import (
 	"math/big"
 	"testing"
+
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 )
 
 // Both scopes get every configured kind, in its group.
@@ -61,5 +63,29 @@ func TestNamePairMalformed(t *testing.T) {
 	}
 	if _, err := e.GetExternalNameFn(map[string]any{}); err == nil {
 		t.Error("nothing in the state: an error")
+	}
+}
+
+// An object whose repository (or team) is gone doesn't exist either: its
+// deletion must not wait forever.
+func TestMissingParentIsNotFound(t *testing.T) {
+	diag := func(summary, detail string) []*tfprotov6.Diagnostic {
+		return []*tfprotov6.Diagnostic{{Severity: tfprotov6.DiagnosticSeverityError, Summary: summary, Detail: detail}}
+	}
+	for _, tc := range []struct {
+		resource, summary, detail string
+		want                      bool
+	}{
+		{"forgejo_repository_webhook", "Unable to read repository", "Repository with ID 29 not found: 404 Not Found", true},
+		{"forgejo_repository_webhook", "Unable to read repository webhook", "Repository webhook with owner 'o', repo 'r' and ID 5 not found: 404", true},
+		{"forgejo_deploy_key", "Unable to read repository", "Repository with ID 29 not found: 404 Not Found", true},
+		{"forgejo_team_member", "Unable to read team", "Team with ID 12 not found: 404 Not Found", true},
+		{"forgejo_repository_webhook", "Unable to read repository", "Unknown error (status 500): boom", false},
+		{"forgejo_repository_webhook", "Unable to read team", "Team with ID 12 not found: 404", false},
+		{"forgejo_team_member", "Unable to read repository", "Repository with ID 29 not found: 404", false},
+	} {
+		if got := ExternalNameConfigs[tc.resource].IsNotFoundDiagnosticFn(diag(tc.summary, tc.detail)); got != tc.want {
+			t.Errorf("%s, %q: %t", tc.resource, tc.summary, got)
+		}
 	}
 }

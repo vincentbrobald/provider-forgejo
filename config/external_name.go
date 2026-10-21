@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -182,12 +183,18 @@ func namePair(parent, key string, isNotFound func([]*tfprotov6.Diagnostic) bool)
 }
 
 // scoped is the external name "<parent>/<key>": the numeric ID of what the
-// object belongs to (parent: repository_id, team_id) and its key. numeric: the key
-// is a number (an ID Forgejo assigns), else a string the user sets (and
-// which is then also in spec.forProvider). readSummary: the summary of the
-// error the resource's Read reports when the object is missing; with
+// object belongs to (parent: repository_id, team_id) and its key. numeric:
+// the key is a number (an ID Forgejo assigns), else a string the user sets
+// (and which is then also in spec.forProvider). readSummary: the summary of
+// the error the resource's Read reports when the object is missing; with
 // "not found" in its detail it means "does not exist" (so Crossplane creates
 // it), not a failure.
+//
+// A missing parent means the object doesn't exist either: the resources read
+// their repository (or team) first, and report its absence under the
+// parent's summary. Otherwise an object whose repository was deleted first
+// could never be deleted (its Observe would fail forever); creating one in a
+// missing repository still fails, visibly.
 func scoped(parent, key string, numeric bool, readSummary string) ujconfig.ExternalName {
 	return ujconfig.ExternalName{
 		SetIdentifierArgumentFn: func(base map[string]any, externalName string) {
@@ -218,18 +225,26 @@ func scoped(parent, key string, numeric bool, readSummary string) ujconfig.Exter
 		// No "id" attribute: Upjet never asks for one.
 		GetIDFn:                ujconfig.ExternalNameAsID,
 		DisableNameInitializer: true,
-		IsNotFoundDiagnosticFn: notFound(readSummary),
+		IsNotFoundDiagnosticFn: notFound(readSummary, parentReadSummary[parent]),
 	}
 }
 
+// parentReadSummary is the summary of the error a resource reports when its
+// parent is missing (the vendored provider's getRepositoryByID and
+// getOrgTeamByID).
+var parentReadSummary = map[string]string{
+	"repository_id": "Unable to read repository",
+	"team_id":       "Unable to read team",
+}
+
 // notFound matches the error a resource's Read reports when Forgejo answers
-// 404: its summary (readSummary) with "not found" in the detail. Such an
-// error means "does not exist" (so Crossplane creates the object), not a
-// failure.
-func notFound(readSummary string) func([]*tfprotov6.Diagnostic) bool {
+// 404: one of its summaries (readSummaries) with "not found" in the detail.
+// Such an error means "does not exist" (so Crossplane creates the object),
+// not a failure.
+func notFound(readSummaries ...string) func([]*tfprotov6.Diagnostic) bool {
 	return func(diags []*tfprotov6.Diagnostic) bool {
 		for _, d := range diags {
-			if d.Severity == tfprotov6.DiagnosticSeverityError && d.Summary == readSummary &&
+			if d.Severity == tfprotov6.DiagnosticSeverityError && slices.Contains(readSummaries, d.Summary) &&
 				strings.Contains(d.Detail, " not found: ") {
 				return true
 			}
