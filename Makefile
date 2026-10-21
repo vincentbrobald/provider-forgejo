@@ -17,7 +17,7 @@
 #   make xpkg       the Crossplane package .build/provider-forgejo.xpkg
 #                   (Crossplane CLI, built from source)
 
-GO_IMAGE      ?= docker.io/library/golang:1.26.9
+GO_IMAGE      ?= docker.io/library/golang:1.26.10
 # OpenTofu only asks the vendored provider for its schema at generation time;
 # nothing runs Terraform or OpenTofu at runtime.
 TOFU_VERSION  ?= 1.13.1
