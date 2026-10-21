@@ -25,12 +25,14 @@ func New(version string) func() provider.Provider {
 }
 
 // withExtras forwards everything to the vendored provider (which implements
-// only the base provider.Provider interface) except Resources.
+// only the base provider.Provider interface) except Resources, which adds
+// ours, and Configure, which removes credentials from its errors
+// (redact.go).
 type withExtras struct {
 	provider.Provider
 }
 
-// Resources: the vendored provider's, then ours.
+// Resources returns the vendored provider's resources, then ours.
 func (p *withExtras) Resources(ctx context.Context) []func() resource.Resource {
 	return append(p.Provider.Resources(ctx), NewTeamRepositoryResource, NewOrganizationOwnerResource)
 }

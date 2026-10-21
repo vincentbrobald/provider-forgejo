@@ -52,7 +52,11 @@ spec:
             description: A ProviderConfigSpec defines the desired state of a ProviderConfig.
             properties:
               credentials:
-                description: Credentials required to authenticate to this provider.
+                description: |-
+                  Credentials required to authenticate to Forgejo: its URL (host) and
+                  either a token (api_token) or a user's name and password (username,
+                  password). A Secret holds them either as JSON under the selected key
+                  or, when the Secret has no such key, as flat keys of these names.
                 properties:
                   env:
                     description: |-
@@ -96,7 +100,9 @@ spec:
                     - namespace
                     type: object
                   source:
-                    description: Source of the provider credentials.
+                    description: |-
+                      Source of the provider credentials: Secret (JSON or flat keys), or
+                      JSON from the environment or a file.
                     enum:
                     - None
                     - Secret

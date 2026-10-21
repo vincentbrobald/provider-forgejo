@@ -15,13 +15,20 @@ import (
 
 // A ProviderConfigSpec defines the desired state of a ProviderConfig.
 type ProviderConfigSpec struct {
-	// Credentials required to authenticate to this provider.
+	// Credentials required to authenticate to Forgejo: its URL (host) and
+	// either a token (api_token) or a user's name and password (username,
+	// password; needed for PersonalAccessToken). A Secret holds them either
+	// as JSON under the selected key ({"host": "https://...", "api_token":
+	// "..."}) or, when the Secret has no such key, as flat keys of these
+	// names. A namespaced ProviderConfig's Secret is read from its own
+	// namespace.
 	Credentials ProviderCredentials `json:"credentials"`
 }
 
 // ProviderCredentials required to authenticate.
 type ProviderCredentials struct {
-	// Source of the provider credentials.
+	// Source of the provider credentials: Secret (JSON or flat keys), or
+	// JSON from the environment or a file.
 	// +kubebuilder:validation:Enum=None;Secret;InjectedIdentity;Environment;Filesystem
 	Source xpv2.CredentialsSource `json:"source"`
 
@@ -100,7 +107,7 @@ type ClusterProviderConfig struct {
 
 // +kubebuilder:object:root=true
 
-// ClusterProviderConfigList contains a list of ProviderConfig.
+// ClusterProviderConfigList contains a list of ClusterProviderConfig.
 type ClusterProviderConfigList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

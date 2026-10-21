@@ -7,10 +7,12 @@ import (
 	ujconfig "github.com/crossplane/upjet/v2/pkg/config"
 )
 
-// configureOrganizationKinds puts organizations, teams and team members in the
-// group "organization" (e.g. teams.organization.forgejo.m.crossplane.brobald.be).
+// configureOrganizationKinds puts organizations, teams, team members and
+// organization owners in the group "organization" (e.g.
+// teams.organization.forgejo.m.crossplane.brobald.be).
 //
-// An OrganizationOwner names its organization and user (no team ID). A Team names its organization (organization, or organizationRef to an
+// An OrganizationOwner names its organization and user (no team ID). A Team
+// names its organization (organization, or organizationRef to an
 // Organization); a TeamMember its team (teamId, or teamIdRef to a Team).
 func configureOrganizationKinds(p *ujconfig.Provider) {
 	for name, kind := range map[string]string{

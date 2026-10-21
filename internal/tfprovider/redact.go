@@ -13,8 +13,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 )
 
-// echoed: how Forgejo repeats a rejected credential in its error: it tries a
-// basic-auth password as an access token too, and reports it
+// echoed matches how Forgejo repeats a rejected credential in its error: it
+// tries a basic-auth password as an access token too, and reports it
 // ("access token does not exist [sha: <password>]", "task with token
 // "<password>": ...").
 var echoed = []*regexp.Regexp{
@@ -41,6 +41,8 @@ func (p *withExtras) Configure(ctx context.Context, req provider.ConfigureReques
 	resp.Diagnostics = redactDiagnostics(resp.Diagnostics, secrets)
 }
 
+// redactDiagnostics returns the diagnostics with secrets and their echoes
+// redacted, as errors or warnings (the only severities Configure reports).
 func redactDiagnostics(in diag.Diagnostics, secrets []string) diag.Diagnostics {
 	out := make(diag.Diagnostics, 0, len(in))
 	for _, d := range in {
@@ -54,6 +56,7 @@ func redactDiagnostics(in diag.Diagnostics, secrets []string) diag.Diagnostics {
 	return out
 }
 
+// redact replaces each secret, and whatever echoed holds, with <redacted>.
 func redact(s string, secrets []string) string {
 	for _, v := range secrets {
 		s = strings.ReplaceAll(s, v, "<redacted>")

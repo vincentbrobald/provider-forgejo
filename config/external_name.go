@@ -20,14 +20,20 @@ import (
 // ExternalNameConfigs lists the Terraform resources that become kinds, with
 // their external name (crossplane.io/external-name).
 //
-// The per-repository resources, team members and team repositories have no
-// "id" attribute: each is identified by its repository's (team's) numeric ID
-// plus a key (a numeric ID, a user, a branch or repository name), and the
-// external name is "<parent>/<key>".
-// Repositories and teams are known by their own numeric ID
-// (numericIDExternalName), organizations by their name. Upjet reads it into the
-// identifying attributes before each call, and builds it from the state after
-// a creation. To adopt an existing object, set the annotation by hand.
+// How each is identified:
+//   - repositories, teams and users: their own numeric ID
+//     (numericIDExternalName, userExternalName);
+//   - organizations: their name (organizationExternalName);
+//   - the per-repository resources, team members and team repositories,
+//     which have no "id" attribute: "<parent>/<key>", the repository's (or
+//     team's) numeric ID and a key (a numeric ID, a user, a branch or
+//     repository name; scoped);
+//   - access tokens and organization owners: "<a>/<b>" of two names (a
+//     token's user and name, an owner's organization and user; namePair).
+//
+// Upjet reads the external name into the identifying attributes before each
+// call, and builds it from the state after a creation. To adopt an existing
+// object, set the annotation by hand.
 var ExternalNameConfigs = map[string]ujconfig.ExternalName{
 	"forgejo_deploy_key":            scoped("repository_id", "key_id", true, "Unable to read deploy key"),
 	"forgejo_repository_webhook":    scoped("repository_id", "webhook_id", true, "Unable to read repository webhook"),
@@ -43,11 +49,11 @@ var ExternalNameConfigs = map[string]ujconfig.ExternalName{
 	"forgejo_organization_owner":    namePair("organization", "user", notFound(tfprovider.ReadOrganizationOwnerSummary)),
 }
 
-// numericIDExternalName: a repository or a team is known by its numeric ID,
-// which Forgejo assigns ("12"); the resource reads it by that ID. Before the
-// creation there is none: the ID "0" then reads as "not found" (Forgejo has
-// no object 0), so Crossplane creates it. "id" is computed: it never goes into
-// the configuration sent to the Terraform provider.
+// numericIDExternalName is the external name of a repository or a team: its
+// numeric ID, which Forgejo assigns ("12"); the resource reads it by that ID.
+// Before the creation there is none: the ID "0" then reads as "not found"
+// (Forgejo has no object 0), so Crossplane creates it. "id" is computed: it
+// never goes into the configuration sent to the Terraform provider.
 func numericIDExternalName(readSummary string) ujconfig.ExternalName {
 	return ujconfig.ExternalName{
 		SetIdentifierArgumentFn: ujconfig.NopSetIdentifierArgument,
@@ -78,10 +84,10 @@ func numericIDExternalName(readSummary string) ujconfig.ExternalName {
 	}
 }
 
-// organizationExternalName: an organization is known by its name, which the
-// resource reads it by (and which is also spec.forProvider.name). Its numeric
-// "id" is computed and unused for reading: the stand-in "0" fills it until
-// the first read, as a name isn't a number.
+// organizationExternalName is the external name of an organization: its name,
+// which the resource reads it by (and which is also spec.forProvider.name).
+// Its numeric "id" is computed and unused for reading: the stand-in "0" fills
+// it until the first read, as a name isn't a number.
 func organizationExternalName() ujconfig.ExternalName {
 	return ujconfig.ExternalName{
 		SetIdentifierArgumentFn: func(base map[string]any, externalName string) {
@@ -104,9 +110,9 @@ func organizationExternalName() ujconfig.ExternalName {
 	}
 }
 
-// userExternalName: a user is known by its numeric ID, like a repository.
-// The client looks the ID up by searching, so a missing user is an empty
-// result ("user not found with id 0", status 200), not a 404.
+// userExternalName is the external name of a user: its numeric ID, like a
+// repository's. The client looks the ID up by searching, so a missing user is
+// an empty result ("user not found with id 0", status 200), not a 404.
 func userExternalName() ujconfig.ExternalName {
 	e := numericIDExternalName("Unable to read user")
 	notFound404 := e.IsNotFoundDiagnosticFn
@@ -122,10 +128,10 @@ func userExternalName() ujconfig.ExternalName {
 	return e
 }
 
-// tokenExternalName: an access token is known as "<user>/<name>", which the
-// resource reads it by (it lists the user's tokens and picks the name). Its
-// numeric "id" is computed and unused for reading (stand-in "0", as for
-// organizations). A missing token is reported as "Unable to find personal
+// tokenExternalName is the external name of an access token, "<user>/<name>",
+// which the resource reads it by (it lists the user's tokens and picks the
+// name). Its numeric "id" is computed and unused for reading (stand-in "0", as
+// for organizations). A missing token is reported as "Unable to find personal
 // access token by name", without the usual "not found: " detail.
 func tokenExternalName() ujconfig.ExternalName {
 	e := namePair("user", "name", func(diags []*tfprotov6.Diagnostic) bool {
@@ -267,7 +273,8 @@ func ExternalNameConfigurations() ujconfig.ResourceOption {
 }
 
 // ExternalNameConfigured returns the include list: the configured resources,
-// as anchored regular expressions.
+// as regular expressions anchored at the end only. No resource name ends with
+// another's, so each still matches its own resource alone.
 func ExternalNameConfigured() []string {
 	l := make([]string, 0, len(ExternalNameConfigs))
 	for name := range ExternalNameConfigs {

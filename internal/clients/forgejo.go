@@ -161,11 +161,16 @@ func resolveModern(ctx context.Context, crClient client.Client, mg resource.Mode
 	}
 	pcObj, ok := pcRuntimeObj.(client.Object)
 	if !ok {
-		return nil, errors.New(" is not an Object")
+		return nil, errors.Errorf("%s is not an Object", configRef.Kind)
 	}
 
-	// Namespace is ignored for the cluster-scoped ClusterProviderConfig.
-	if err := crClient.Get(ctx, types.NamespacedName{Name: configRef.Name, Namespace: mg.GetNamespace()}, pcObj); err != nil {
+	// A ProviderConfig is in the object's namespace; a ClusterProviderConfig
+	// has none.
+	key := types.NamespacedName{Name: configRef.Name}
+	if configRef.Kind == namespacedv1beta1.ProviderConfigKind {
+		key.Namespace = mg.GetNamespace()
+	}
+	if err := crClient.Get(ctx, key, pcObj); err != nil {
 		return nil, errors.Wrap(err, errGetProviderConfig)
 	}
 
@@ -174,6 +179,9 @@ func resolveModern(ctx context.Context, crClient client.Client, mg resource.Mode
 	switch pc := pcObj.(type) {
 	case *namespacedv1beta1.ProviderConfig:
 		pcSpec = pc.Spec
+		// A namespaced ProviderConfig's Secret is always read from its own
+		// namespace, whatever the reference says: a team's ProviderConfig
+		// can't point at another namespace's credentials.
 		if pcSpec.Credentials.SecretRef != nil {
 			pcSpec.Credentials.SecretRef.Namespace = mg.GetNamespace()
 		}
