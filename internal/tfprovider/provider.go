@@ -1,10 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Vincent Brobald
 // SPDX-License-Identifier: MPL-2.0
 
-// Package tfprovider is the Terraform provider that provider-forgejo runs: the
-// vendored svalabs provider (third_party/terraform-provider-forgejo, files
-// unchanged) plus resources of our own that it lacks, sharing its
-// configuration and Forgejo client.
 package tfprovider
 
 import (
@@ -16,8 +12,6 @@ import (
 	vendored "brobald.be/provider-forgejo/third_party/terraform-provider-forgejo/pkg/provider"
 )
 
-// New returns the provider factory: the vendored provider's own, with the
-// extra resources appended.
 func New(version string) func() provider.Provider {
 	return func() provider.Provider {
 		return &withExtras{Provider: vendored.New(version)()}
@@ -32,7 +26,6 @@ type withExtras struct {
 	provider.Provider
 }
 
-// Resources returns the vendored provider's resources, then ours.
 func (p *withExtras) Resources(ctx context.Context) []func() resource.Resource {
 	return append(p.Provider.Resources(ctx), NewTeamRepositoryResource, NewOrganizationOwnerResource)
 }

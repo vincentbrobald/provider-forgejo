@@ -5,7 +5,6 @@
 //
 // From crossplane/upjet-provider-template, changed for provider-forgejo.
 
-// Package v1beta1 contains the core resources of the forgejo upjet provider.
 // +kubebuilder:object:generate=true
 // +groupName=forgejo.crossplane.brobald.be
 // +versionName=v1beta1

@@ -5,18 +5,9 @@
 //
 // From crossplane/upjet-provider-template, changed for provider-forgejo.
 
-// Package config is the Upjet configuration of provider-forgejo: which
-// resources of the Forgejo Terraform provider (svalabs, vendored in
-// third_party/) become Crossplane kinds, and how each is identified.
-//
-// The Terraform provider's Go code runs in the provider's own process
-// (Terraform Plugin Framework, "no-fork"): no Terraform or OpenTofu binary is
-// involved at runtime. schema.json (its schema) and provider-metadata.yaml
-// (descriptions and examples from its docs) are inputs of `make generate`.
 package config
 
 import (
-	// schema.json and provider-metadata.yaml are embedded.
 	_ "embed"
 
 	ujconfig "github.com/crossplane/upjet/v2/pkg/config"
@@ -36,16 +27,12 @@ var providerSchema string
 //go:embed provider-metadata.yaml
 var providerMetadata string
 
-// GetProvider returns the configuration of the cluster-scoped kinds
-// (forgejo.crossplane.brobald.be). Upjet always generates them; the
-// namespaced ones (GetProviderNamespaced) are the ones to use with
-// Crossplane v2.
+// Upjet always generates them; the namespaced ones (GetProviderNamespaced)
+// are the ones to use with Crossplane v2.
 func GetProvider() *ujconfig.Provider {
 	return newProvider("forgejo.crossplane.brobald.be")
 }
 
-// GetProviderNamespaced returns the configuration of the namespaced kinds
-// (forgejo.m.crossplane.brobald.be).
 func GetProviderNamespaced() *ujconfig.Provider {
 	return newProvider("forgejo.m.crossplane.brobald.be",
 		ujconfig.WithExampleManifestConfiguration(ujconfig.ExampleManifestConfiguration{

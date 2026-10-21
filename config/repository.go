@@ -7,13 +7,6 @@ import (
 	ujconfig "github.com/crossplane/upjet/v2/pkg/config"
 )
 
-// configureRepositoryKinds puts the per-repository resources in the group
-// "repository" (e.g. deploykeys.repository.forgejo.m.crossplane.brobald.be)
-// and names their kinds.
-//
-// The per-repository kinds take the repository's numeric ID (repositoryId),
-// or a reference to a Repository object (repositoryIdRef): its external
-// name is that ID.
 func configureRepositoryKinds(p *ujconfig.Provider) {
 	for name, kind := range map[string]string{
 		"forgejo_deploy_key":         "DeployKey",
@@ -21,9 +14,8 @@ func configureRepositoryKinds(p *ujconfig.Provider) {
 		"forgejo_collaborator":       "Collaborator",
 		"forgejo_branch_protection":  "BranchProtection",
 		"forgejo_repository":         "Repository",
-		// Ours (internal/tfprovider), not the vendored provider's. In this
-		// group: it references a Repository and a Team, and the organization
-		// group must not reference this one (Go import cycle).
+		// In this group: it references a Repository and a Team, and the
+		// organization group must not reference this one (Go import cycle).
 		"forgejo_team_repository": "TeamRepository",
 	} {
 		p.AddResourceConfigurator(name, func(r *ujconfig.Resource) {
@@ -37,7 +29,6 @@ func configureRepositoryKinds(p *ujconfig.Provider) {
 	// (back to Terraform, a numeric string is accepted as a number).
 	p.AddResourceConfigurator("forgejo_repository", func(r *ujconfig.Resource) {
 		r.TerraformConversions = append(r.TerraformConversions, idAsString{})
-		// owner: a user or an organization; ownerRef names an Organization.
 		r.References["owner"] = ujconfig.Reference{TerraformName: "forgejo_organization"}
 	})
 
@@ -47,9 +38,6 @@ func configureRepositoryKinds(p *ujconfig.Provider) {
 		})
 	}
 
-	// A TeamRepository gives a repository to a team: teamId (or teamIdRef to
-	// a Team) and repository by name (or repositoryRef to a Repository: its
-	// spec.forProvider.name, not its ID), with the organization.
 	p.AddResourceConfigurator("forgejo_team_repository", func(r *ujconfig.Resource) {
 		r.References["team_id"] = ujconfig.Reference{TerraformName: "forgejo_team"}
 		r.References["repository"] = ujconfig.Reference{
@@ -74,11 +62,8 @@ func configureRepositoryKinds(p *ujconfig.Provider) {
 	})
 }
 
-// idAsString turns a numeric "id" of the Terraform state into a string, as
-// the generated status field (atProvider.id) expects.
 type idAsString struct{}
 
-// Convert implements ujconfig.TerraformConversion.
 func (idAsString) Convert(params map[string]any, _ *ujconfig.Resource, mode ujconfig.Mode) (map[string]any, error) {
 	if mode != ujconfig.FromTerraform {
 		return params, nil

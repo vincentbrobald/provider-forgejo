@@ -59,8 +59,6 @@ func nsKey(kind, pc string) *nsrepo.DeployKey {
 func TestSetupNamespaced(t *testing.T) {
 	ctx := context.Background()
 	cpc := &namespacedv1beta1.ClusterProviderConfig{ObjectMeta: metav1.ObjectMeta{Name: "default"}, Spec: secretRef("crossplane-system")}
-	// The team's ProviderConfig names the platform's Secret: its own
-	// namespace's is read instead.
 	pc := &namespacedv1beta1.ProviderConfig{ObjectMeta: metav1.ObjectMeta{Namespace: "team", Name: "ci"}, Spec: secretRef("crossplane-system")}
 	k := kubeWith(t, cpc, pc,
 		sec("crossplane-system", map[string]string{"credentials": `{"host": "https://forgejo", "api_token": "admin"}`}),

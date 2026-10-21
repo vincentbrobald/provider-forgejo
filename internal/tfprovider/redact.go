@@ -41,8 +41,6 @@ func (p *withExtras) Configure(ctx context.Context, req provider.ConfigureReques
 	resp.Diagnostics = redactDiagnostics(resp.Diagnostics, secrets)
 }
 
-// redactDiagnostics returns the diagnostics with secrets and their echoes
-// redacted, as errors or warnings (the only severities Configure reports).
 func redactDiagnostics(in diag.Diagnostics, secrets []string) diag.Diagnostics {
 	out := make(diag.Diagnostics, 0, len(in))
 	for _, d := range in {
@@ -56,7 +54,6 @@ func redactDiagnostics(in diag.Diagnostics, secrets []string) diag.Diagnostics {
 	return out
 }
 
-// redact replaces each secret, and whatever echoed holds, with <redacted>.
 func redact(s string, secrets []string) string {
 	for _, v := range secrets {
 		s = strings.ReplaceAll(s, v, "<redacted>")

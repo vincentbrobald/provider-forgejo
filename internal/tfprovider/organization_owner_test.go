@@ -40,7 +40,6 @@ func (f *fakeOwners) AddTeamMember(int64, string) (*forgejo.Response, error)    
 func (f *fakeOwners) RemoveTeamMember(int64, string) (*forgejo.Response, error) { return nil, nil }
 
 func TestOrganizationOwner(t *testing.T) {
-	// Owners on the second page of teams.
 	teams := []*forgejo.Team{}
 	for i := 0; i < 50; i++ {
 		teams = append(teams, &forgejo.Team{ID: int64(100 + i), Name: "team"})
@@ -55,7 +54,6 @@ func TestOrganizationOwner(t *testing.T) {
 	if !d.HasError() || d[0].Summary() != ReadOrganizationOwnerSummary || !strings.Contains(d[0].Detail(), " not found: ") {
 		t.Fatalf("a non-owner must read as not found: %v", d)
 	}
-	// A missing organization is an error, not "not found" (no creation).
 	r = &organizationOwnerResource{client: &fakeOwners{listErr: true}}
 	d = r.check("nope", "alice")
 	if !d.HasError() || strings.Contains(d[0].Detail(), " not found: ") {

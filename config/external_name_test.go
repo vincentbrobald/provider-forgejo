@@ -21,7 +21,6 @@ func TestRepoScopedNumericKey(t *testing.T) {
 		t.Fatalf("identifiers not set from the external name: %v", params)
 	}
 
-	// Number types the state conversion may produce.
 	for _, state := range []map[string]any{
 		{"repository_id": float64(12), "key_id": float64(345)},
 		{"repository_id": int64(12), "key_id": big.NewFloat(345)},
@@ -111,8 +110,6 @@ func TestEveryConfiguredResourceExists(t *testing.T) {
 func TestRepositoryExternalName(t *testing.T) {
 	e := ExternalNameConfigs["forgejo_repository"]
 
-	// No external name yet: ID 0, which Forgejo reports as not found, so
-	// Crossplane creates the repository.
 	if id, err := e.GetIDFn(context.Background(), "", nil, nil); err != nil || id != "0" {
 		t.Fatalf("GetIDFn(\"\") = %q, %v; want 0", id, err)
 	}
@@ -166,7 +163,6 @@ func TestOrganizationExternalName(t *testing.T) {
 	if got, err := e.GetExternalNameFn(map[string]any{"id": float64(4), "name": "acme"}); err != nil || got != "acme" {
 		t.Fatalf("GetExternalNameFn = %q, %v", got, err)
 	}
-	// The numeric id is unused for reading but must parse as a number.
 	if id, _ := e.GetIDFn(context.Background(), "acme", nil, nil); id != "0" {
 		t.Fatalf("GetIDFn = %q, want the stand-in 0", id)
 	}

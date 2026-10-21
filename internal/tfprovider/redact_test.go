@@ -23,7 +23,6 @@ func TestRedact(t *testing.T) {
 	if !strings.Contains(got, "user does not exist [uid: 0, name: ci-x]") || out[0].Severity() != diag.SeverityError {
 		t.Fatalf("the rest must stay: %q", got)
 	}
-	// Echoed values the configuration doesn't know (e.g. another field).
 	if r := redact(`[sha: abc] token "def"`, nil); r != `[sha: <redacted>] token "<redacted>"` {
 		t.Fatalf("got %q", r)
 	}

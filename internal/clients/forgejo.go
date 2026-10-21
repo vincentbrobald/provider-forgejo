@@ -5,8 +5,6 @@
 //
 // From crossplane/upjet-provider-template, changed for provider-forgejo.
 
-// Package clients turns a ProviderConfig into the configuration of the
-// Forgejo Terraform provider, which runs in this process (Plugin Framework).
 package clients
 
 import (
@@ -36,14 +34,8 @@ const (
 	errUnmarshalCredentials = "cannot unmarshal forgejo credentials as JSON"
 )
 
-// credentialKeys are the credentials the Terraform provider takes: host
-// (https://forgejo.example), and either api_token or username and password.
-// The server's certificate is checked against the system CAs (SSL_CERT_DIR
-// adds others).
 var credentialKeys = []string{"host", "api_token", "username", "password"}
 
-// TerraformSetupBuilder returns the function that configures the Terraform
-// provider for a managed resource, from its ProviderConfig's credentials.
 func TerraformSetupBuilder() terraform.SetupFn {
 	return func(ctx context.Context, client client.Client, mg resource.Managed) (terraform.Setup, error) {
 		ps := terraform.Setup{}
@@ -72,13 +64,6 @@ func TerraformSetupBuilder() terraform.SetupFn {
 	}
 }
 
-// extractCredentials reads the credentials, in either form:
-//   - JSON in the Secret key the ProviderConfig names ({"host": ..., "api_token": ...});
-//   - flat keys (host, api_token, ...) when the Secret has no such key, so
-//     that each value can live in its own key (e.g. a token kept in sync by
-//     another tool).
-//
-// Sources other than a Secret go through Crossplane's extractor (JSON).
 func extractCredentials(ctx context.Context, c client.Client, pcSpec *namespacedv1beta1.ProviderConfigSpec) (map[string]string, error) {
 	creds := map[string]string{}
 	sel := pcSpec.Credentials.CommonCredentialSelectors
@@ -164,8 +149,6 @@ func resolveModern(ctx context.Context, crClient client.Client, mg resource.Mode
 		return nil, errors.Errorf("%s is not an Object", configRef.Kind)
 	}
 
-	// A ProviderConfig is in the object's namespace; a ClusterProviderConfig
-	// has none.
 	key := types.NamespacedName{Name: configRef.Name}
 	if configRef.Kind == namespacedv1beta1.ProviderConfigKind {
 		key.Namespace = mg.GetNamespace()

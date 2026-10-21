@@ -15,21 +15,17 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-// Package type metadata.
 const (
 	Group   = "forgejo.m.crossplane.brobald.be"
 	Version = "v1beta1"
 )
 
 var (
-	// SchemeGroupVersion is group version used to register these objects
 	SchemeGroupVersion = schema.GroupVersion{Group: Group, Version: Version}
 
-	// SchemeBuilder is used to add go types to the GroupVersionKind scheme
 	SchemeBuilder = runtime.NewSchemeBuilder()
 )
 
-// ProviderConfig type metadata.
 var (
 	ProviderConfigKind             = reflect.TypeOf(ProviderConfig{}).Name()
 	ProviderConfigGroupKind        = schema.GroupKind{Group: Group, Kind: ProviderConfigKind}.String()
@@ -37,7 +33,6 @@ var (
 	ProviderConfigGroupVersionKind = SchemeGroupVersion.WithKind(ProviderConfigKind)
 )
 
-// ClusterProviderConfig type metadata.
 var (
 	ClusterProviderConfigKind             = reflect.TypeOf(ClusterProviderConfig{}).Name()
 	ClusterProviderConfigGroupKind        = schema.GroupKind{Group: Group, Kind: ClusterProviderConfigKind}.String()
@@ -45,7 +40,6 @@ var (
 	ClusterProviderConfigGroupVersionKind = SchemeGroupVersion.WithKind(ClusterProviderConfigKind)
 )
 
-// ProviderConfigUsage type metadata.
 var (
 	ProviderConfigUsageKind             = reflect.TypeOf(ProviderConfigUsage{}).Name()
 	ProviderConfigUsageGroupKind        = schema.GroupKind{Group: Group, Kind: ProviderConfigUsageKind}.String()

@@ -29,7 +29,6 @@ spec:
     name: v1beta1
     schema:
       openAPIV3Schema:
-        description: A ClusterProviderConfig configures a Forgejo provider.
         properties:
           apiVersion:
             description: |-
@@ -49,7 +48,6 @@ spec:
           metadata:
             type: object
           spec:
-            description: A ProviderConfigSpec defines the desired state of a ProviderConfig.
             properties:
               credentials:
                 description: |-
@@ -120,7 +118,6 @@ spec:
             - credentials
             type: object
           status:
-            description: A ProviderConfigStatus reflects the observed state of a ProviderConfig.
             properties:
               conditions:
                 description: Conditions of the resource.

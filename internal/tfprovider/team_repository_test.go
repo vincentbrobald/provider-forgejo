@@ -57,8 +57,8 @@ func TestCheck(t *testing.T) {
 		name    string
 		client  *fakeClient
 		repo    string
-		missing bool // a "not found" error (the summary Upjet treats as absent)
-		failure bool // another error
+		missing bool
+		failure bool
 	}{
 		{"found on a later page", &fakeClient{repos: many}, "gitops", false, false},
 		{"absent", &fakeClient{repos: many}, "nope", true, false},

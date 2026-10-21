@@ -1,10 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Vincent Brobald
 // SPDX-License-Identifier: MPL-2.0
 
-// Command tfprovider serves the Forgejo Terraform provider (vendored, plus
-// internal/tfprovider) over the plugin protocol, only so that `make schema`
-// can ask OpenTofu for its schema (config/schema.json). The Crossplane
-// provider itself never runs it.
 package main
 
 import (

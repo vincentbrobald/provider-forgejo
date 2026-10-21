@@ -28,9 +28,6 @@ var (
 	_ resource.ResourceWithConfigure = &teamRepositoryResource{}
 )
 
-// NewTeamRepositoryResource returns forgejo_team_repository: a repository of
-// an organization given to one of its teams (the team's permission and units
-// then apply to it). Forgejo API: PUT/DELETE /teams/{id}/repos/{org}/{repo}.
 func NewTeamRepositoryResource() resource.Resource {
 	return &teamRepositoryResource{}
 }
@@ -39,8 +36,6 @@ type teamRepositoryResource struct {
 	client teamRepositoryClient
 }
 
-// teamRepositoryClient is the SDK calls used, so that tests can stand in for
-// Forgejo.
 type teamRepositoryClient interface {
 	ListTeamRepositories(id int64, opt forgejo.ListTeamRepositoriesOptions) ([]*forgejo.Repository, *forgejo.Response, error)
 	AddTeamRepository(id int64, org, repo string) (*forgejo.Response, error)
@@ -121,10 +116,9 @@ func (r *teamRepositoryResource) Read(ctx context.Context, req resource.ReadRequ
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-// check tells whether the team has the repository. Forgejo's API has a
-// direct check (GET /teams/{id}/repos/{org}/{repo}), but the SDK has no call
-// for it, so the team's repositories are listed (a team has few). A page
-// shorter than the page size is the last.
+// Forgejo's API has a direct check (GET /teams/{id}/repos/{org}/{repo}), but
+// the SDK has no call for it, so the team's repositories are listed (a team
+// has few).
 func (r *teamRepositoryResource) check(data teamRepositoryModel) diag.Diagnostics {
 	var diags diag.Diagnostics
 	id, org, repo := data.TeamID.ValueInt64(), data.Organization.ValueString(), data.Repository.ValueString()
@@ -153,8 +147,6 @@ func (r *teamRepositoryResource) check(data teamRepositoryModel) diag.Diagnostic
 	return diags
 }
 
-// Update has nothing to change in place: every attribute forces a
-// replacement.
 func (r *teamRepositoryResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var data teamRepositoryModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)

@@ -18,7 +18,6 @@ import (
 	"brobald.be/provider-forgejo/apis/cluster/v1beta1"
 )
 
-// SetupWebhookWithManager registers the conversion webhook for ProviderConfig.
 func SetupWebhookWithManager(mgr ctrl.Manager) error {
 	if err := ctrl.NewWebhookManagedBy(mgr, &v1beta1.ProviderConfig{}).
 		Complete(); err != nil {
@@ -27,8 +26,6 @@ func SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return nil
 }
 
-// Setup adds a controller that reconciles ProviderConfigs by accounting for
-// their current usage.
 func Setup(mgr ctrl.Manager, o controller.Options) error {
 	name := providerconfig.ControllerName(v1beta1.ProviderConfigGroupKind)
 
@@ -48,8 +45,6 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 			providerconfig.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))))) //nolint:staticcheck // suppress until crossplane-runtime offers the new recorder api
 }
 
-// SetupGated adds a controller that reconciles ProviderConfigs by accounting for
-// their current usage.
 func SetupGated(mgr ctrl.Manager, o controller.Options) error {
 	o.Gate.Register(func() {
 		if err := Setup(mgr, o); err != nil {

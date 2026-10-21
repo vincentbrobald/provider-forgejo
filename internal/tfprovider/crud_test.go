@@ -18,11 +18,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
-// calls records what a resource asked of Forgejo; err fails every write.
 type calls struct {
 	added, removed []string
 	err            error
-	status         int // of err's response
+	status         int
 }
 
 func (c *calls) res() *forgejo.Response {
@@ -32,7 +31,6 @@ func (c *calls) res() *forgejo.Response {
 	return &forgejo.Response{Response: &http.Response{StatusCode: c.status}}
 }
 
-// teamRepos is a team's repositories that records writes.
 type teamRepos struct {
 	fakeClient
 	calls
@@ -47,7 +45,6 @@ func (f *teamRepos) RemoveTeamRepository(id int64, org, repo string) (*forgejo.R
 	return f.res(), f.err
 }
 
-// owners is an organization's teams that records writes.
 type owners struct {
 	fakeOwners
 	calls
@@ -62,8 +59,6 @@ func (f *owners) RemoveTeamMember(id int64, user string) (*forgejo.Response, err
 	return f.res(), f.err
 }
 
-// crud runs a resource's Create, Read, Update and Delete with value as the
-// plan and the state, and returns each one's diagnostics.
 func crud(t *testing.T, r resource.Resource, value any) (create, read, update, del []string) {
 	t.Helper()
 	ctx := context.Background()
@@ -91,7 +86,6 @@ func crud(t *testing.T, r resource.Resource, value any) (create, read, update, d
 		details(ur.Diagnostics.Errors()), details(dr.Diagnostics.Errors())
 }
 
-// details renders diagnostics as "summary: detail".
 func details[T interface {
 	Summary() string
 	Detail() string
@@ -113,7 +107,6 @@ func TestTeamRepositoryCRUD(t *testing.T) {
 		t.Fatalf("added %v, removed %v", f.added, f.removed)
 	}
 
-	// Failures are reported; a repository already removed (404) is not one.
 	f = &teamRepos{calls: calls{err: errors.New("boom"), status: http.StatusInternalServerError}}
 	c, r, _, d = crud(t, &teamRepositoryResource{client: f}, model("gitops"))
 	if len(c) != 1 || !strings.Contains(c[0], "Unable to add team repository") || len(d) != 1 || len(r) != 1 {
@@ -137,7 +130,6 @@ func TestOrganizationOwnerCRUD(t *testing.T) {
 		t.Fatalf("added %v, removed %v", f.added, f.removed)
 	}
 
-	// Forgejo refuses to remove the last owner: the error is reported.
 	f = &owners{fakeOwners: fakeOwners{teams: ownersTeam}, calls: calls{err: errors.New("last owner"), status: http.StatusConflict}}
 	c, r, _, d = crud(t, &organizationOwnerResource{client: f}, m)
 	if len(c) != 1 || len(d) != 1 || !strings.Contains(d[0], "Unable to remove organization owner") {
@@ -147,7 +139,6 @@ func TestOrganizationOwnerCRUD(t *testing.T) {
 		t.Fatalf("not a member: not found: %v", r)
 	}
 
-	// An organization without its team Owners: every call fails, never "not found".
 	f = &owners{fakeOwners: fakeOwners{teams: []*forgejo.Team{{ID: 5, Name: "Devs"}}}}
 	c, r, _, d = crud(t, &organizationOwnerResource{client: f}, m)
 	for _, e := range [][]string{c, r, d} {
@@ -187,7 +178,6 @@ func TestSchemasAndConfigure(t *testing.T) {
 	}
 }
 
-// Configure removes the password from the vendored provider's errors.
 func TestConfigureRedacts(t *testing.T) {
 	ctx := context.Background()
 	p := New("test")()

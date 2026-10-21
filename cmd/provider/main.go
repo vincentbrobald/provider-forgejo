@@ -81,9 +81,7 @@ func main() {
 		enableSecretCache        = app.Flag("enable-secret-cache", "Enable caching of Secret objects. When true, Secrets are served from the informer cache instead of direct API calls. This reduces API server load but increases memory usage.").Default("true").Envar("ENABLE_SECRET_CACHE").Bool()
 
 		certsDirSet = false
-		// we record whether the command-line option "--certs-dir" was supplied
-		// in the registered PreAction for the flag.
-		certsDir = app.Flag("certs-dir", "The directory that contains the server key and certificate.").Default(tlsServerCertDir).Envar(certsDirEnvVar).PreAction(func(_ *kingpin.ParseContext) error {
+		certsDir    = app.Flag("certs-dir", "The directory that contains the server key and certificate.").Default(tlsServerCertDir).Envar(certsDirEnvVar).PreAction(func(_ *kingpin.ParseContext) error {
 			certsDirSet = true
 			return nil
 		}).String()
@@ -94,9 +92,6 @@ func main() {
 	zl := zap.New(zap.UseDevMode(*debug))
 	log := logging.NewLogrLogger(zl.WithName("provider-forgejo"))
 	if *debug {
-		// The controller-runtime runs with a no-op logger by default. It is
-		// *very* verbose even at info level, so we only provide it a real
-		// logger when we're running in debug mode.
 		ctrl.SetLogger(zl)
 	}
 
@@ -105,14 +100,9 @@ func main() {
 	cfg, err := ctrl.GetConfig()
 	kingpin.FatalIfError(err, "Cannot get API server rest config")
 
-	// Get the TLS certs directory from the environment variables set by
-	// Crossplane if they're available.
 	// In older XP versions we used WEBHOOK_TLS_CERT_DIR, in newer versions
-	// we use TLS_SERVER_CERTS_DIR. If an explicit certs dir is not supplied
-	// via the command-line options, then these environment variables are used
-	// instead.
+	// we use TLS_SERVER_CERTS_DIR.
 	if !certsDirSet {
-		// backwards-compatibility concerns
 		xpCertsDir := os.Getenv(certsDirEnvVar)
 		if xpCertsDir == "" {
 			xpCertsDir = os.Getenv(tlsServerCertDirEnvVar)
@@ -120,8 +110,6 @@ func main() {
 		if xpCertsDir == "" {
 			xpCertsDir = os.Getenv(webhookTLSCertDirEnvVar)
 		}
-		// we probably don't need this condition but just to be on the
-		// safe side, if we are missing any kingpin machinery details...
 		if xpCertsDir != "" {
 			*certsDir = xpCertsDir
 		}
@@ -129,9 +117,6 @@ func main() {
 
 	var clientOpts client.Options
 	if !*enableSecretCache {
-		// When secret caching is disabled (default), configure the
-		// client to bypass the cache for Secret objects. This means
-		// Get/List calls for Secrets will go directly to the API server.
 		clientOpts = client.Options{
 			Cache: &client.CacheOptions{
 				DisableFor: []client.Object{&corev1.Secret{}},

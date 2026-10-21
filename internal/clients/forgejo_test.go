@@ -49,7 +49,6 @@ func TestCredentialsJSON(t *testing.T) {
 }
 
 func TestCredentialsFlatKeys(t *testing.T) {
-	// No "credentials" key: the flat keys are read, anything else ignored.
 	c := withSecret(map[string]string{"host": "https://git.example", "api_token": "t0k", "other": "x"}).Build()
 	creds, err := extractCredentials(context.Background(), c, pcSpec("credentials"))
 	if err != nil {

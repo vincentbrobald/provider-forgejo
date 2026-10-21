@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 )
 
-// Both scopes get every configured kind, in its group.
 func TestGetProviders(t *testing.T) {
 	for _, pc := range []struct {
 		root string
@@ -47,8 +46,6 @@ func TestFormatValue(t *testing.T) {
 	}
 }
 
-// A malformed external name sets nothing, and a state without the names
-// has no external name.
 func TestNamePairMalformed(t *testing.T) {
 	e := namePair("organization", "user", nil)
 	for _, n := range []string{"", "acme", "acme/", "/alice"} {
@@ -66,8 +63,6 @@ func TestNamePairMalformed(t *testing.T) {
 	}
 }
 
-// An object whose repository (or team) is gone doesn't exist either: its
-// deletion must not wait forever.
 func TestMissingParentIsNotFound(t *testing.T) {
 	diag := func(summary, detail string) []*tfprotov6.Diagnostic {
 		return []*tfprotov6.Diagnostic{{Severity: tfprotov6.DiagnosticSeverityError, Summary: summary, Detail: detail}}
