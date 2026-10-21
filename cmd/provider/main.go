@@ -141,6 +141,7 @@ func main() {
 	kingpin.FatalIfError(apisCluster.AddToScheme(scheme), "Cannot add cluster-scoped Forgejo APIs to scheme")
 	kingpin.FatalIfError(apisNamespaced.AddToScheme(scheme), "Cannot add namespace-scoped Forgejo APIs to scheme")
 	kingpin.FatalIfError(apiextensionsv1.AddToScheme(scheme), "Cannot add CustomResourceDefinition to scheme")
+	kingpin.FatalIfError(authv1.AddToScheme(scheme), "Cannot add k8s authorization APIs to scheme")
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme:           scheme,
@@ -170,10 +171,6 @@ func main() {
 		RenewDeadline:              func() *time.Duration { d := 50 * time.Second; return &d }(),
 	})
 	kingpin.FatalIfError(err, "Cannot create controller manager")
-	kingpin.FatalIfError(apisCluster.AddToScheme(mgr.GetScheme()), "Cannot add cluster-scoped Forgejo APIs to scheme")
-	kingpin.FatalIfError(apisNamespaced.AddToScheme(mgr.GetScheme()), "Cannot add namespaced Forgejo APIs to scheme")
-	kingpin.FatalIfError(apiextensionsv1.AddToScheme(mgr.GetScheme()), "Cannot add api-extensions APIs to scheme")
-	kingpin.FatalIfError(authv1.AddToScheme(mgr.GetScheme()), "Cannot add k8s authorization APIs to scheme")
 
 	metricRecorder := managed.NewMRMetricRecorder()
 	stateMetrics := statemetrics.NewMRStateMetrics()
@@ -277,12 +274,9 @@ func main() {
 
 // canWatchCRD reports whether the provider may get, list and watch
 // CustomResourceDefinitions, by a SelfSubjectAccessReview per verb; it stops
-// at the first verb denied. It also adds the authorization API to the
-// manager's scheme. An error means a review couldn't be made.
+// at the first verb denied. The manager's scheme must hold the authorization
+// API (main adds it). An error means a review couldn't be made.
 func canWatchCRD(ctx context.Context, mgr manager.Manager) (bool, error) {
-	if err := authv1.AddToScheme(mgr.GetScheme()); err != nil {
-		return false, err
-	}
 	verbs := []string{"get", "list", "watch"}
 	for _, verb := range verbs {
 		sar := &authv1.SelfSubjectAccessReview{
@@ -295,7 +289,7 @@ func canWatchCRD(ctx context.Context, mgr manager.Manager) (bool, error) {
 			},
 		}
 		if err := mgr.GetClient().Create(ctx, sar); err != nil {
-			return false, errors.Wrapf(err, "unable to perform RBAC check for verb %s on CustomResourceDefinitions", verbs)
+			return false, errors.Wrapf(err, "unable to perform RBAC check for verb %s on CustomResourceDefinitions", verb)
 		}
 		if !sar.Status.Allowed {
 			return false, nil

@@ -10,10 +10,6 @@ import (
 )
 
 const (
-	// EnableAlphaExternalSecretStores enables external secret stores. Nothing
-	// in this provider sets it.
-	EnableAlphaExternalSecretStores xpfeature.Flag = "EnableAlphaExternalSecretStores"
-
 	// EnableBetaManagementPolicies enables management policies; main sets it
 	// unless --enable-management-policies=false.
 	EnableBetaManagementPolicies xpfeature.Flag = xpfeature.EnableBetaManagementPolicies

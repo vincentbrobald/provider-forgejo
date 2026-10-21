@@ -28,9 +28,8 @@ type ProviderConfigSpec struct {
 // ProviderCredentials says where the provider reads its Forgejo credentials.
 type ProviderCredentials struct {
 	// Source of the provider credentials: Secret (JSON or flat keys), or
-	// JSON from the environment or a file. None and InjectedIdentity aren't
-	// supported: with them, connecting to Forgejo fails.
-	// +kubebuilder:validation:Enum=None;Secret;InjectedIdentity;Environment;Filesystem
+	// JSON from the environment or a file.
+	// +kubebuilder:validation:Enum=Secret;Environment;Filesystem
 	Source xpv2.CredentialsSource `json:"source"`
 
 	xpv2.CommonCredentialSelectors `json:",inline"`
@@ -49,7 +48,6 @@ type ProviderConfigStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:printcolumn:name="SECRET-NAME",type="string",JSONPath=".spec.credentials.secretRef.name",priority=1
-// +kubebuilder:resource:scope=Namespaced
 // +kubebuilder:resource:scope=Namespaced,categories={crossplane,provider,forgejo}
 type ProviderConfig struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -102,7 +100,6 @@ type ProviderConfigUsageList struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:printcolumn:name="SECRET-NAME",type="string",JSONPath=".spec.credentials.secretRef.name",priority=1
-// +kubebuilder:resource:scope=Cluster
 // +kubebuilder:resource:scope=Cluster,categories={crossplane,provider,forgejo}
 type ClusterProviderConfig struct {
 	metav1.TypeMeta   `json:",inline"`

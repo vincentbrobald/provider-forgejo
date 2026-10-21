@@ -88,9 +88,9 @@ func extractCredentials(ctx context.Context, c client.Client, pcSpec *namespaced
 		if err := c.Get(ctx, types.NamespacedName{Namespace: sel.SecretRef.Namespace, Name: sel.SecretRef.Name}, secret); err != nil {
 			return nil, errors.Wrap(err, errExtractCredentials)
 		}
-		// No such key: flat keys. With the key, fall through to the common
-		// extractor, which reads the Secret again.
-		if _, ok := secret.Data[sel.SecretRef.Key]; !ok {
+		// The selected key holds JSON; without it, the flat keys are read.
+		data, ok := secret.Data[sel.SecretRef.Key]
+		if !ok {
 			for _, k := range credentialKeys {
 				if v, ok := secret.Data[k]; ok {
 					creds[k] = string(v)
@@ -98,6 +98,10 @@ func extractCredentials(ctx context.Context, c client.Client, pcSpec *namespaced
 			}
 			return creds, nil
 		}
+		if err := json.Unmarshal(data, &creds); err != nil {
+			return nil, errors.Wrap(err, errUnmarshalCredentials)
+		}
+		return creds, nil
 	}
 	data, err := resource.CommonCredentialExtractor(ctx, pcSpec.Credentials.Source, c, sel)
 	if err != nil {

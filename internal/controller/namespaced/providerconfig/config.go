@@ -89,7 +89,7 @@ func setupNamespaced(mgr ctrl.Manager, o controller.Options) error {
 func SetupGated(mgr ctrl.Manager, o controller.Options) error {
 	o.Gate.Register(func() {
 		if err := Setup(mgr, o); err != nil {
-			mgr.GetLogger().Error(err, "unable to setup reconcilers", "gvk", v1beta1.ClusterProviderConfigGroupVersionKind.String(), "gvk", v1beta1.ProviderConfigGroupVersionKind.String())
+			mgr.GetLogger().Error(err, "unable to setup reconcilers", "gvks", []string{v1beta1.ClusterProviderConfigGroupVersionKind.String(), v1beta1.ProviderConfigGroupVersionKind.String()})
 		}
 	}, v1beta1.ClusterProviderConfigGroupVersionKind, v1beta1.ProviderConfigGroupVersionKind, v1beta1.ProviderConfigUsageGroupVersionKind)
 	return nil
