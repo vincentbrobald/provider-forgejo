@@ -1,6 +1,9 @@
 // SPDX-FileCopyrightText: 2026 Vincent Brobald
 // SPDX-License-Identifier: MPL-2.0
 
+// Package config is the Upjet configuration of the provider: which Terraform
+// resources become which kinds, in which groups, with which external names
+// and references.
 package config
 
 import (
@@ -18,6 +21,12 @@ import (
 	"brobald.be/provider-forgejo/internal/tfprovider"
 )
 
+// ExternalNameConfigs maps each Terraform resource the provider generates to
+// its external-name configuration; resources not in it aren't generated
+// (ExternalNameConfigured). External names: a numeric ID (repository, team,
+// user), a name (organization), "<repository or team ID>/<key>" for an object
+// of a repository or team, "<organization>/<user>" for an owner and
+// "<user>/<name>" for a token.
 var ExternalNameConfigs = map[string]ujconfig.ExternalName{
 	"forgejo_deploy_key":            scoped("repository_id", "key_id", true, "Unable to read deploy key"),
 	"forgejo_repository_webhook":    scoped("repository_id", "webhook_id", true, "Unable to read repository webhook"),
@@ -33,8 +42,11 @@ var ExternalNameConfigs = map[string]ujconfig.ExternalName{
 	"forgejo_organization_owner":    namePair("organization", "user", notFound(tfprovider.ReadOrganizationOwnerSummary)),
 }
 
-// Before the creation there is none: the ID "0" then reads as "not found"
-// (Forgejo has no object 0), so Crossplane creates it.
+// numericIDExternalName is the external name of a resource Forgejo
+// identifies by a numeric ID: the computed attribute "id". Before the
+// creation there is none: the ID "0" then reads as "not found" (Forgejo has
+// no object 0), so Crossplane creates it. readSummary is the summary of the
+// error the resource's Read reports.
 func numericIDExternalName(readSummary string) ujconfig.ExternalName {
 	return ujconfig.ExternalName{
 		SetIdentifierArgumentFn: ujconfig.NopSetIdentifierArgument,
@@ -65,8 +77,10 @@ func numericIDExternalName(readSummary string) ujconfig.ExternalName {
 	}
 }
 
-// Its numeric "id" is computed and unused for reading: the stand-in "0" fills
-// it until the first read, as a name isn't a number.
+// organizationExternalName is the external name of an organization: its
+// name. Its numeric "id" is computed and unused for reading: the stand-in "0"
+// fills it until the first read, as a name isn't a number. An empty external
+// name leaves the spec's name.
 func organizationExternalName() ujconfig.ExternalName {
 	return ujconfig.ExternalName{
 		SetIdentifierArgumentFn: func(base map[string]any, externalName string) {
@@ -89,8 +103,10 @@ func organizationExternalName() ujconfig.ExternalName {
 	}
 }
 
-// The client looks the ID up by searching, so a missing user is an empty
-// result ("user not found with id 0", status 200), not a 404.
+// userExternalName is the numeric ID external name of a user, which also
+// reads a search without result as "not found": the client looks the ID up
+// by searching, so a missing user is an empty result ("user not found with id
+// 0", status 200), not a 404.
 func userExternalName() ujconfig.ExternalName {
 	e := numericIDExternalName("Unable to read user")
 	notFound404 := e.IsNotFoundDiagnosticFn
@@ -106,8 +122,9 @@ func userExternalName() ujconfig.ExternalName {
 	return e
 }
 
-// Its numeric "id" is computed and unused for reading (stand-in "0", as for
-// organizations). A missing token is reported as "Unable to find personal
+// tokenExternalName is the external name of a personal access token:
+// "<user>/<name>". Its numeric "id" is computed and unused for reading
+// (stand-in "0", as for organizations). A missing token is reported as "Unable to find personal
 // access token by name", without the usual "not found: " detail.
 func tokenExternalName() ujconfig.ExternalName {
 	e := namePair("user", "name", func(diags []*tfprotov6.Diagnostic) bool {
@@ -126,6 +143,10 @@ func tokenExternalName() ujconfig.ExternalName {
 	return e
 }
 
+// namePair is an external name "<parent>/<key>" made of two string
+// attributes, parent and key; the key may hold slashes, the parent can't. A
+// malformed external name (no slash, an empty part) sets nothing, leaving
+// the spec's values. isNotFound tells the diagnostics of a missing object.
 func namePair(parent, key string, isNotFound func([]*tfprotov6.Diagnostic) bool) ujconfig.ExternalName {
 	return ujconfig.ExternalName{
 		SetIdentifierArgumentFn: func(base map[string]any, externalName string) {
@@ -153,6 +174,13 @@ func namePair(parent, key string, isNotFound func([]*tfprotov6.Diagnostic) bool)
 	}
 }
 
+// scoped is the external name "<parent ID>/<key>" of an object in a
+// repository or team: parent is the attribute with the numeric ID
+// (repository_id, team_id), key the object's own attribute, a numeric ID if
+// numeric is set, otherwise a string that may hold slashes (a branch name).
+// A part that isn't a number where one is expected is left unset. readSummary
+// is the summary of the error the object's Read reports.
+//
 // A missing parent means the object doesn't exist either: the resources read
 // their repository (or team) first, and report its absence under the
 // parent's summary. Otherwise an object whose repository was deleted first
@@ -161,6 +189,8 @@ func namePair(parent, key string, isNotFound func([]*tfprotov6.Diagnostic) bool)
 func scoped(parent, key string, numeric bool, readSummary string) ujconfig.ExternalName {
 	return ujconfig.ExternalName{
 		SetIdentifierArgumentFn: func(base map[string]any, externalName string) {
+			// Cut at the first slash: the parent ID has none, a string key
+			// may.
 			repo, rest, ok := strings.Cut(externalName, "/")
 			if !ok || rest == "" {
 				return
@@ -213,6 +243,10 @@ func notFound(readSummaries ...string) func([]*tfprotov6.Diagnostic) bool {
 	}
 }
 
+// formatValue renders an identifier from the Terraform state as a string:
+// a string as it is, a number (int64, int, float64, *big.Float) as a decimal
+// integer (a fraction is dropped), anything else with fmt.Sprint. A missing
+// (nil) value or an empty string is an error.
 func formatValue(v any) (string, error) {
 	switch x := v.(type) {
 	case nil:
@@ -236,6 +270,9 @@ func formatValue(v any) (string, error) {
 	}
 }
 
+// ExternalNameConfigurations returns the resource option that gives each
+// resource its configuration from ExternalNameConfigs; the others keep
+// Upjet's default.
 func ExternalNameConfigurations() ujconfig.ResourceOption {
 	return func(r *ujconfig.Resource) {
 		if e, ok := ExternalNameConfigs[r.Name]; ok {
@@ -244,8 +281,10 @@ func ExternalNameConfigurations() ujconfig.ResourceOption {
 	}
 }
 
-// No resource name ends with another's, so each still matches its own
-// resource alone.
+// ExternalNameConfigured returns the regular expressions of the Terraform
+// resources to generate: "<name>$" for each resource of ExternalNameConfigs,
+// in no particular order. No resource name ends with another's, so each
+// still matches its own resource alone.
 func ExternalNameConfigured() []string {
 	l := make([]string, 0, len(ExternalNameConfigs))
 	for name := range ExternalNameConfigs {

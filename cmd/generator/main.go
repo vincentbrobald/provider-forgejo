@@ -5,6 +5,8 @@
 //
 // From crossplane/upjet-provider-template, changed for provider-forgejo.
 
+// Command generator runs Upjet's code generation for provider-forgejo (see
+// apis/generate.go).
 package main
 
 import (
@@ -17,6 +19,9 @@ import (
 	"brobald.be/provider-forgejo/config"
 )
 
+// main generates the Go types, controllers and examples of both the
+// cluster-scoped and the namespaced kinds into the repository whose root
+// directory is its only argument. It panics without that argument.
 func main() {
 	if len(os.Args) < 2 || os.Args[1] == "" {
 		panic("root directory is required to be given as argument")

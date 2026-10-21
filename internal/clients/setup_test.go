@@ -24,6 +24,7 @@ import (
 	namespacedv1beta1 "brobald.be/provider-forgejo/apis/namespaced/v1beta1"
 )
 
+// sec returns the Secret <ns>/forgejo holding data.
 func sec(ns string, data map[string]string) *corev1.Secret {
 	s := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: "forgejo"}, Data: map[string][]byte{}}
 	for k, v := range data {
@@ -32,6 +33,8 @@ func sec(ns string, data map[string]string) *corev1.Secret {
 	return s
 }
 
+// secretRef returns a spec whose credentials are the key "credentials" of
+// the Secret <ns>/forgejo.
 func secretRef(ns string) namespacedv1beta1.ProviderConfigSpec {
 	spec := namespacedv1beta1.ProviderConfigSpec{}
 	spec.Credentials.Source = xpv2.CredentialsSourceSecret
@@ -39,6 +42,8 @@ func secretRef(ns string) namespacedv1beta1.ProviderConfigSpec {
 	return spec
 }
 
+// kubeWith returns a fake client holding objs, with the core and both
+// scopes' provider APIs in its scheme.
 func kubeWith(t *testing.T, objs ...client.Object) client.Client {
 	t.Helper()
 	s := runtime.NewScheme()
@@ -50,12 +55,18 @@ func kubeWith(t *testing.T, objs ...client.Object) client.Client {
 	return fake.NewClientBuilder().WithScheme(s).WithObjects(objs...).Build()
 }
 
+// nsKey returns a DeployKey team/k that references the provider
+// configuration pc of kind.
 func nsKey(kind, pc string) *nsrepo.DeployKey {
 	k := &nsrepo.DeployKey{ObjectMeta: metav1.ObjectMeta{Namespace: "team", Name: "k", UID: "u1"}}
 	k.SetProviderConfigReference(&xpv2.ProviderConfigReference{Kind: kind, Name: pc})
 	return k
 }
 
+// TestSetupNamespaced resolves a ClusterProviderConfig (JSON credentials) and
+// a team's ProviderConfig, whose Secret is read from the team's namespace
+// although its reference names crossplane-system; then the errors: no
+// reference, unknown kind, missing configuration, no host.
 func TestSetupNamespaced(t *testing.T) {
 	ctx := context.Background()
 	cpc := &namespacedv1beta1.ClusterProviderConfig{ObjectMeta: metav1.ObjectMeta{Name: "default"}, Spec: secretRef("crossplane-system")}
@@ -99,6 +110,9 @@ func TestSetupNamespaced(t *testing.T) {
 	}
 }
 
+// TestSetupClusterScoped resolves a cluster-scoped resource's ProviderConfig,
+// then the errors of no reference and a missing configuration, and the nil
+// case of toSharedPCSpec.
 func TestSetupClusterScoped(t *testing.T) {
 	ctx := context.Background()
 	spec := clusterv1beta1.ProviderConfigSpec{}

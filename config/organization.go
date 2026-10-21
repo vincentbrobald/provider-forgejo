@@ -7,6 +7,11 @@ import (
 	ujconfig "github.com/crossplane/upjet/v2/pkg/config"
 )
 
+// configureOrganizationKinds puts the organization, team, team member and
+// organization owner resources in the group "organization" with their kinds,
+// gives the organization's and the team's numeric "id" to the status as a
+// string (idAsString), and makes a team's organization and a team member's
+// team_id references to an Organization and a Team.
 func configureOrganizationKinds(p *ujconfig.Provider) {
 	for name, kind := range map[string]string{
 		"forgejo_organization":       "Organization",

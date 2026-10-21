@@ -28,30 +28,39 @@ var (
 	_ resource.ResourceWithConfigure = &teamRepositoryResource{}
 )
 
+// NewTeamRepositoryResource returns forgejo_team_repository: a repository of
+// an organization given to one of its teams.
 func NewTeamRepositoryResource() resource.Resource {
 	return &teamRepositoryResource{}
 }
 
+// teamRepositoryResource implements forgejo_team_repository.
 type teamRepositoryResource struct {
 	client teamRepositoryClient
 }
 
+// teamRepositoryClient is the part of the Forgejo client the resource uses
+// (a fake in the tests).
 type teamRepositoryClient interface {
 	ListTeamRepositories(id int64, opt forgejo.ListTeamRepositoriesOptions) ([]*forgejo.Repository, *forgejo.Response, error)
 	AddTeamRepository(id int64, org, repo string) (*forgejo.Response, error)
 	RemoveTeamRepository(id int64, org, repo string) (*forgejo.Response, error)
 }
 
+// teamRepositoryModel is the resource's configuration and state.
 type teamRepositoryModel struct {
 	TeamID       types.Int64  `tfsdk:"team_id"`
 	Organization types.String `tfsdk:"organization"`
 	Repository   types.String `tfsdk:"repository"`
 }
 
+// Metadata names the resource <provider>_team_repository.
 func (r *teamRepositoryResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_team_repository"
 }
 
+// Schema describes the resource: three required attributes, each replacing
+// the resource when changed.
 func (r *teamRepositoryResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "A repository of an organization given to one of its teams: the team's permission and units apply to it.",
@@ -75,6 +84,9 @@ func (r *teamRepositoryResource) Schema(_ context.Context, _ resource.SchemaRequ
 	}
 }
 
+// Configure takes the provider's Forgejo client. Without provider data (as
+// during validation, before the provider is configured) it does nothing;
+// data of another type is an error.
 func (r *teamRepositoryResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
@@ -88,6 +100,7 @@ func (r *teamRepositoryResource) Configure(_ context.Context, req resource.Confi
 	r.client = client
 }
 
+// Create gives the repository to the team.
 func (r *teamRepositoryResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var data teamRepositoryModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
@@ -103,6 +116,8 @@ func (r *teamRepositoryResource) Create(ctx context.Context, req resource.Create
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
+// Read checks that the team still has the repository (check); the state
+// stays as it is.
 func (r *teamRepositoryResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var data teamRepositoryModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
@@ -116,7 +131,9 @@ func (r *teamRepositoryResource) Read(ctx context.Context, req resource.ReadRequ
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-// Forgejo's API has a direct check (GET /teams/{id}/repos/{org}/{repo}), but
+// check reports an error unless the team has the repository, with " not
+// found: " in its detail when the team is missing (404) or doesn't have it
+// (see ReadTeamRepositorySummary). Forgejo's API has a direct check (GET /teams/{id}/repos/{org}/{repo}), but
 // the SDK has no call for it, so the team's repositories are listed (a team
 // has few).
 func (r *teamRepositoryResource) check(data teamRepositoryModel) diag.Diagnostics {
@@ -135,10 +152,12 @@ func (r *teamRepositoryResource) check(data teamRepositoryModel) diag.Diagnostic
 			return diags
 		}
 		for _, x := range repos {
+			// The same name may belong to another owner.
 			if x != nil && x.Name == repo && x.Owner != nil && x.Owner.UserName == org {
 				return diags
 			}
 		}
+		// A short page is the last one.
 		if len(repos) < 50 {
 			break
 		}
@@ -147,6 +166,8 @@ func (r *teamRepositoryResource) check(data teamRepositoryModel) diag.Diagnostic
 	return diags
 }
 
+// Update only stores the plan: every attribute replaces the resource when
+// changed, so there is nothing to change in Forgejo.
 func (r *teamRepositoryResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var data teamRepositoryModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
@@ -156,6 +177,8 @@ func (r *teamRepositoryResource) Update(ctx context.Context, req resource.Update
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
+// Delete takes the repository from the team; a 404 (already gone) counts as
+// done.
 func (r *teamRepositoryResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var data teamRepositoryModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)

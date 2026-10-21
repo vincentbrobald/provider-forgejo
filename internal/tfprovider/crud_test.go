@@ -18,12 +18,15 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
+// calls records the names a fake's writes were given, and holds the error
+// and HTTP status (0: no response) the writes return.
 type calls struct {
 	added, removed []string
 	err            error
 	status         int
 }
 
+// res returns a response with the configured status, or nil for status 0.
 func (c *calls) res() *forgejo.Response {
 	if c.status == 0 {
 		return nil
@@ -31,34 +34,45 @@ func (c *calls) res() *forgejo.Response {
 	return &forgejo.Response{Response: &http.Response{StatusCode: c.status}}
 }
 
+// teamRepos is a fake team repository client that records its writes.
 type teamRepos struct {
 	fakeClient
 	calls
 }
 
+// AddTeamRepository records "<org>/<repo>" as added.
 func (f *teamRepos) AddTeamRepository(id int64, org, repo string) (*forgejo.Response, error) {
 	f.added = append(f.added, org+"/"+repo)
 	return f.res(), f.err
 }
+
+// RemoveTeamRepository records "<org>/<repo>" as removed.
 func (f *teamRepos) RemoveTeamRepository(id int64, org, repo string) (*forgejo.Response, error) {
 	f.removed = append(f.removed, org+"/"+repo)
 	return f.res(), f.err
 }
 
+// owners is a fake organization owner client that records its writes.
 type owners struct {
 	fakeOwners
 	calls
 }
 
+// AddTeamMember records the user as added.
 func (f *owners) AddTeamMember(id int64, user string) (*forgejo.Response, error) {
 	f.added = append(f.added, user)
 	return f.res(), f.err
 }
+
+// RemoveTeamMember records the user as removed.
 func (f *owners) RemoveTeamMember(id int64, user string) (*forgejo.Response, error) {
 	f.removed = append(f.removed, user)
 	return f.res(), f.err
 }
 
+// crud runs Create, Read, Update and Delete of the resource once each, with
+// value as the plan and the prior state, and returns each call's errors as
+// "<summary>: <detail>".
 func crud(t *testing.T, r resource.Resource, value any) (create, read, update, del []string) {
 	t.Helper()
 	ctx := context.Background()
@@ -86,6 +100,7 @@ func crud(t *testing.T, r resource.Resource, value any) (create, read, update, d
 		details(ur.Diagnostics.Errors()), details(dr.Diagnostics.Errors())
 }
 
+// details returns each diagnostic as "<summary>: <detail>".
 func details[T interface {
 	Summary() string
 	Detail() string
@@ -97,6 +112,9 @@ func details[T interface {
 	return out
 }
 
+// TestTeamRepositoryCRUD checks the calls each operation makes, the errors
+// of a failing server, and that removing a repository the team no longer has
+// succeeds.
 func TestTeamRepositoryCRUD(t *testing.T) {
 	f := &teamRepos{fakeClient: fakeClient{repos: []*forgejo.Repository{repo("acme", "gitops")}}}
 	c, r, u, d := crud(t, &teamRepositoryResource{client: f}, model("gitops"))
@@ -118,6 +136,9 @@ func TestTeamRepositoryCRUD(t *testing.T) {
 	}
 }
 
+// TestOrganizationOwnerCRUD checks the calls each operation makes, a refused
+// write (409) and a non-member read as not found, and that nothing is written
+// to an organization without a team Owners.
 func TestOrganizationOwnerCRUD(t *testing.T) {
 	ownersTeam := []*forgejo.Team{{ID: 2, Name: "Owners"}}
 	m := organizationOwnerModel{Organization: types.StringValue("acme"), User: types.StringValue("alice")}
@@ -151,6 +172,8 @@ func TestOrganizationOwnerCRUD(t *testing.T) {
 	}
 }
 
+// TestSchemasAndConfigure checks that every attribute is required and
+// described, and Configure with no provider data, the wrong type and a client.
 func TestSchemasAndConfigure(t *testing.T) {
 	ctx := context.Background()
 	for _, r := range []resource.ResourceWithConfigure{&teamRepositoryResource{}, &organizationOwnerResource{}} {
@@ -178,6 +201,8 @@ func TestSchemasAndConfigure(t *testing.T) {
 	}
 }
 
+// TestConfigureRedacts configures the provider against an address where
+// nothing listens and checks that the password is in none of its errors.
 func TestConfigureRedacts(t *testing.T) {
 	ctx := context.Background()
 	p := New("test")()

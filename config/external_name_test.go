@@ -12,6 +12,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 )
 
+// TestRepoScopedNumericKey checks a deploy key's "<repository ID>/<key ID>" both
+// ways, with the number types the state may hold, and a state without key.
 func TestRepoScopedNumericKey(t *testing.T) {
 	e := ExternalNameConfigs["forgejo_deploy_key"]
 
@@ -36,6 +38,7 @@ func TestRepoScopedNumericKey(t *testing.T) {
 	}
 }
 
+// TestRepoScopedStringKey checks that a branch name keeps its slashes.
 func TestRepoScopedStringKey(t *testing.T) {
 	e := ExternalNameConfigs["forgejo_branch_protection"]
 
@@ -51,6 +54,8 @@ func TestRepoScopedStringKey(t *testing.T) {
 	}
 }
 
+// TestRepoScopedIgnoresEmptyExternalName checks that an empty external name
+// leaves the spec's values.
 func TestRepoScopedIgnoresEmptyExternalName(t *testing.T) {
 	params := map[string]any{"user": "pac-bot", "repository_id": int64(7)}
 	ExternalNameConfigs["forgejo_collaborator"].SetIdentifierArgumentFn(params, "")
@@ -59,6 +64,8 @@ func TestRepoScopedIgnoresEmptyExternalName(t *testing.T) {
 	}
 }
 
+// TestNotFoundDiagnostic checks that only a deploy key's own 404 reads as not
+// found.
 func TestNotFoundDiagnostic(t *testing.T) {
 	isNotFound := ExternalNameConfigs["forgejo_deploy_key"].IsNotFoundDiagnosticFn
 	notFound := &tfprotov6.Diagnostic{Severity: tfprotov6.DiagnosticSeverityError,
@@ -79,6 +86,9 @@ func TestNotFoundDiagnostic(t *testing.T) {
 	}
 }
 
+// TestEveryConfiguredResourceExists checks that every configured resource
+// is generated, in its group, and that the webhook's config is sensitive and
+// optional.
 func TestEveryConfiguredResourceExists(t *testing.T) {
 	pc := GetProviderNamespaced()
 	for name := range ExternalNameConfigs {
@@ -107,6 +117,8 @@ func TestEveryConfiguredResourceExists(t *testing.T) {
 	}
 }
 
+// TestRepositoryExternalName checks the stand-in ID 0 of a repository
+// before its creation, and that a missing repository reads as not found.
 func TestRepositoryExternalName(t *testing.T) {
 	e := ExternalNameConfigs["forgejo_repository"]
 
@@ -132,6 +144,8 @@ func TestRepositoryExternalName(t *testing.T) {
 	}
 }
 
+// TestRepositoryReferences checks that the objects of a repository
+// reference it by repository_id.
 func TestRepositoryReferences(t *testing.T) {
 	pc := GetProviderNamespaced()
 	for _, name := range []string{"forgejo_deploy_key", "forgejo_repository_webhook", "forgejo_collaborator", "forgejo_branch_protection"} {
@@ -141,6 +155,8 @@ func TestRepositoryReferences(t *testing.T) {
 	}
 }
 
+// TestRepositoryIDAsString checks that a repository's numeric id reaches
+// the status as a string, and goes to Terraform as it is.
 func TestRepositoryIDAsString(t *testing.T) {
 	r := GetProviderNamespaced().Resources["forgejo_repository"]
 	got, err := r.ApplyTFConversions(map[string]any{"id": float64(12), "name": "x"}, ujconfig.FromTerraform)
@@ -153,6 +169,8 @@ func TestRepositoryIDAsString(t *testing.T) {
 	}
 }
 
+// TestOrganizationExternalName checks an organization's name external
+// name, its stand-in ID and its not-found reading.
 func TestOrganizationExternalName(t *testing.T) {
 	e := ExternalNameConfigs["forgejo_organization"]
 	params := map[string]any{}
@@ -173,6 +191,8 @@ func TestOrganizationExternalName(t *testing.T) {
 	}
 }
 
+// TestTeamAndMemberExternalNames checks a team's numeric external name
+// and a team member's "<team ID>/<user>".
 func TestTeamAndMemberExternalNames(t *testing.T) {
 	team := ExternalNameConfigs["forgejo_team"]
 	if id, _ := team.GetIDFn(context.Background(), "", nil, nil); id != "0" {
@@ -192,6 +212,8 @@ func TestTeamAndMemberExternalNames(t *testing.T) {
 	}
 }
 
+// TestOrganizationReferences checks the references of teams, team
+// members and repositories.
 func TestOrganizationReferences(t *testing.T) {
 	pc := GetProviderNamespaced()
 	for name, field := range map[string]string{"forgejo_team": "organization", "forgejo_team_member": "team_id", "forgejo_repository": "owner"} {
@@ -201,6 +223,8 @@ func TestOrganizationReferences(t *testing.T) {
 	}
 }
 
+// TestTokenExternalName checks a token's "<user>/<name>" and which
+// errors read as not found.
 func TestTokenExternalName(t *testing.T) {
 	e := ExternalNameConfigs["forgejo_personal_access_token"]
 	params := map[string]any{}
@@ -225,6 +249,8 @@ func TestTokenExternalName(t *testing.T) {
 	}
 }
 
+// TestUserNotFound checks that an empty search reads as not found and a
+// denied read doesn't.
 func TestUserNotFound(t *testing.T) {
 	e := ExternalNameConfigs["forgejo_user"]
 	missing := []*tfprotov6.Diagnostic{{Severity: tfprotov6.DiagnosticSeverityError,
@@ -239,6 +265,8 @@ func TestUserNotFound(t *testing.T) {
 	}
 }
 
+// TestOrganizationOwnerExternalName checks an owner's
+// "<organization>/<user>" both ways.
 func TestOrganizationOwnerExternalName(t *testing.T) {
 	e := ExternalNameConfigs["forgejo_organization_owner"]
 	params := map[string]any{}

@@ -10,6 +10,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 )
 
+// TestGetProviders checks that both scopes generate exactly the configured
+// resources, and the groups of our own and the token resources.
 func TestGetProviders(t *testing.T) {
 	for _, pc := range []struct {
 		root string
@@ -30,6 +32,7 @@ func TestGetProviders(t *testing.T) {
 	}
 }
 
+// TestFormatValue checks formatValue on each value type it handles.
 func TestFormatValue(t *testing.T) {
 	for _, tc := range []struct {
 		in   any
@@ -46,6 +49,8 @@ func TestFormatValue(t *testing.T) {
 	}
 }
 
+// TestNamePairMalformed checks that malformed external names set nothing and
+// incomplete states give no external name.
 func TestNamePairMalformed(t *testing.T) {
 	e := namePair("organization", "user", nil)
 	for _, n := range []string{"", "acme", "acme/", "/alice"} {
@@ -63,6 +68,9 @@ func TestNamePairMalformed(t *testing.T) {
 	}
 }
 
+// TestMissingParentIsNotFound checks that a missing parent (repository or
+// team) reads as not found for its own objects only, and a server error
+// doesn't.
 func TestMissingParentIsNotFound(t *testing.T) {
 	diag := func(summary, detail string) []*tfprotov6.Diagnostic {
 		return []*tfprotov6.Diagnostic{{Severity: tfprotov6.DiagnosticSeverityError, Summary: summary, Detail: detail}}

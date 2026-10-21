@@ -29,6 +29,9 @@ spec:
     name: v1beta1
     schema:
       openAPIV3Schema:
+        description: |-
+          A ProviderConfig configures how the provider connects to Forgejo. The
+          cluster-scoped managed resources select one by name.
         properties:
           apiVersion:
             description: |-
@@ -48,6 +51,7 @@ spec:
           metadata:
             type: object
           spec:
+            description: A ProviderConfigSpec is the desired state of a ProviderConfig.
             properties:
               credentials:
                 description: |-
@@ -100,7 +104,8 @@ spec:
                   source:
                     description: |-
                       Source of the provider credentials: Secret (JSON or flat keys), or
-                      JSON from the environment or a file.
+                      JSON from the environment or a file. None and InjectedIdentity aren't
+                      supported: with them, connecting to Forgejo fails.
                     enum:
                     - None
                     - Secret
@@ -115,6 +120,7 @@ spec:
             - credentials
             type: object
           status:
+            description: A ProviderConfigStatus is the observed state of a ProviderConfig.
             properties:
               conditions:
                 description: Conditions of the resource.

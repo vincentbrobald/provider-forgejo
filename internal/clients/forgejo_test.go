@@ -16,6 +16,8 @@ import (
 	namespacedv1beta1 "brobald.be/provider-forgejo/apis/namespaced/v1beta1"
 )
 
+// pcSpec returns a spec whose credentials are the key of the Secret
+// crossplane-system/forgejo-credentials.
 func pcSpec(key string) *namespacedv1beta1.ProviderConfigSpec {
 	spec := &namespacedv1beta1.ProviderConfigSpec{}
 	spec.Credentials.Source = xpv2.CredentialsSourceSecret
@@ -26,6 +28,7 @@ func pcSpec(key string) *namespacedv1beta1.ProviderConfigSpec {
 	return spec
 }
 
+// withSecret returns a fake client builder holding that Secret with data.
 func withSecret(data map[string]string) *fake.ClientBuilder {
 	s := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: "crossplane-system", Name: "forgejo-credentials"},
 		Data: map[string][]byte{}}
@@ -37,6 +40,7 @@ func withSecret(data map[string]string) *fake.ClientBuilder {
 	return fake.NewClientBuilder().WithScheme(scheme).WithObjects(s)
 }
 
+// TestCredentialsJSON reads the credentials as JSON under the selected key.
 func TestCredentialsJSON(t *testing.T) {
 	c := withSecret(map[string]string{"credentials": `{"host":"https://git.example","api_token":"t0k"}`}).Build()
 	creds, err := extractCredentials(context.Background(), c, pcSpec("credentials"))
@@ -48,6 +52,8 @@ func TestCredentialsJSON(t *testing.T) {
 	}
 }
 
+// TestCredentialsFlatKeys reads flat keys from a Secret without the selected
+// key, ignoring the others.
 func TestCredentialsFlatKeys(t *testing.T) {
 	c := withSecret(map[string]string{"host": "https://git.example", "api_token": "t0k", "other": "x"}).Build()
 	creds, err := extractCredentials(context.Background(), c, pcSpec("credentials"))
@@ -59,6 +65,7 @@ func TestCredentialsFlatKeys(t *testing.T) {
 	}
 }
 
+// TestCredentialsBadJSON checks that malformed JSON is an error.
 func TestCredentialsBadJSON(t *testing.T) {
 	c := withSecret(map[string]string{"credentials": "not json"}).Build()
 	if _, err := extractCredentials(context.Background(), c, pcSpec("credentials")); err == nil {

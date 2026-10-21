@@ -16,11 +16,15 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
+// fakeClient is a fake team repository client: repos are listed page by
+// page; a non-zero status makes listing fail with that status.
 type fakeClient struct {
 	repos  []*forgejo.Repository
 	status int
 }
 
+// ListTeamRepositories returns the requested page of repositories (empty
+// past the end).
 func (f *fakeClient) ListTeamRepositories(_ int64, opt forgejo.ListTeamRepositoriesOptions) ([]*forgejo.Repository, *forgejo.Response, error) {
 	if f.status != 0 {
 		return nil, &forgejo.Response{Response: &http.Response{StatusCode: f.status}}, errors.New("failed")
@@ -32,21 +36,29 @@ func (f *fakeClient) ListTeamRepositories(_ int64, opt forgejo.ListTeamRepositor
 	end := min(start+opt.PageSize, len(f.repos))
 	return f.repos[start:end], nil, nil
 }
+
+// AddTeamRepository succeeds without doing anything.
 func (f *fakeClient) AddTeamRepository(int64, string, string) (*forgejo.Response, error) {
 	return nil, nil
 }
+
+// RemoveTeamRepository succeeds without doing anything.
 func (f *fakeClient) RemoveTeamRepository(int64, string, string) (*forgejo.Response, error) {
 	return nil, nil
 }
 
+// repo returns a repository named name, owned by org.
 func repo(org, name string) *forgejo.Repository {
 	return &forgejo.Repository{Name: name, Owner: &forgejo.User{UserName: org}}
 }
 
+// model returns the state of team 3's repository acme/<repo>.
 func model(repo string) teamRepositoryModel {
 	return teamRepositoryModel{TeamID: types.Int64Value(3), Organization: types.StringValue("acme"), Repository: types.StringValue(repo)}
 }
 
+// TestCheck checks check across pages, against an absent repository, one of
+// another owner, a missing team and a server error.
 func TestCheck(t *testing.T) {
 	many := make([]*forgejo.Repository, 0, 120)
 	for range 110 {
@@ -83,6 +95,8 @@ func TestCheck(t *testing.T) {
 	}
 }
 
+// TestResourcesIncludeTeamRepository checks that the provider has our
+// resource beside the vendored ones.
 func TestResourcesIncludeTeamRepository(t *testing.T) {
 	p := New("test")()
 	var names []string

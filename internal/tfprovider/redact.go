@@ -31,6 +31,7 @@ func (p *withExtras) Configure(ctx context.Context, req provider.ConfigureReques
 	if !resp.Diagnostics.HasError() {
 		return
 	}
+	// The configured password and token, where set and not empty.
 	var secrets []string
 	for _, a := range []string{"password", "api_token"} {
 		var v *string
@@ -41,6 +42,9 @@ func (p *withExtras) Configure(ctx context.Context, req provider.ConfigureReques
 	resp.Diagnostics = redactDiagnostics(resp.Diagnostics, secrets)
 }
 
+// redactDiagnostics returns copies of the diagnostics with the secrets and
+// echoed credentials replaced in their summaries and details (redact). Every
+// diagnostic that isn't an error becomes a warning; attribute paths are lost.
 func redactDiagnostics(in diag.Diagnostics, secrets []string) diag.Diagnostics {
 	out := make(diag.Diagnostics, 0, len(in))
 	for _, d := range in {
@@ -54,6 +58,8 @@ func redactDiagnostics(in diag.Diagnostics, secrets []string) diag.Diagnostics {
 	return out
 }
 
+// redact replaces each secret in s with "<redacted>", then the credentials
+// Forgejo echoes (echoed), which also catches a credential not in secrets.
 func redact(s string, secrets []string) string {
 	for _, v := range secrets {
 		s = strings.ReplaceAll(s, v, "<redacted>")

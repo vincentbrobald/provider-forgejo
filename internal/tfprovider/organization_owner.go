@@ -39,10 +39,13 @@ func NewOrganizationOwnerResource() resource.Resource {
 	return &organizationOwnerResource{}
 }
 
+// organizationOwnerResource implements forgejo_organization_owner.
 type organizationOwnerResource struct {
 	client organizationOwnerClient
 }
 
+// organizationOwnerClient is the part of the Forgejo client the resource uses
+// (a fake in the tests).
 type organizationOwnerClient interface {
 	ListOrgTeams(org string, opt forgejo.ListTeamsOptions) ([]*forgejo.Team, *forgejo.Response, error)
 	GetTeamMember(id int64, user string) (*forgejo.User, *forgejo.Response, error)
@@ -50,15 +53,19 @@ type organizationOwnerClient interface {
 	RemoveTeamMember(id int64, user string) (*forgejo.Response, error)
 }
 
+// organizationOwnerModel is the resource's configuration and state.
 type organizationOwnerModel struct {
 	Organization types.String `tfsdk:"organization"`
 	User         types.String `tfsdk:"user"`
 }
 
+// Metadata names the resource <provider>_organization_owner.
 func (r *organizationOwnerResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_organization_owner"
 }
 
+// Schema describes the resource: two required strings, each replacing the
+// resource when changed.
 func (r *organizationOwnerResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "An owner of an organization: a member of its team Owners, found by name.",
@@ -77,6 +84,9 @@ func (r *organizationOwnerResource) Schema(_ context.Context, _ resource.SchemaR
 	}
 }
 
+// Configure takes the provider's Forgejo client. Without provider data (as
+// during validation, before the provider is configured) it does nothing;
+// data of another type is an error.
 func (r *organizationOwnerResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
@@ -90,9 +100,10 @@ func (r *organizationOwnerResource) Configure(_ context.Context, req resource.Co
 	r.client = client
 }
 
-// summary is that of the error to report (a missing organization is an
-// error, never "not found": that would make Crossplane try to create the
-// membership).
+// ownersTeamID returns the ID of the organization's team Owners, looked up
+// by listing its teams page by page. summary is that of the error to report
+// (a missing organization is an error, never "not found": that would make
+// Crossplane try to create the membership).
 func (r *organizationOwnerResource) ownersTeamID(org, summary string) (int64, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	for page := 1; ; page++ {
@@ -108,6 +119,7 @@ func (r *organizationOwnerResource) ownersTeamID(org, summary string) (int64, di
 				return t.ID, diags
 			}
 		}
+		// A short page is the last one.
 		if len(teams) < 50 {
 			break
 		}
@@ -116,6 +128,7 @@ func (r *organizationOwnerResource) ownersTeamID(org, summary string) (int64, di
 	return 0, diags
 }
 
+// Create adds the user to the organization's team Owners.
 func (r *organizationOwnerResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var data organizationOwnerModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
@@ -136,6 +149,8 @@ func (r *organizationOwnerResource) Create(ctx context.Context, req resource.Cre
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
+// Read checks that the user is still an owner (check); the state stays as it
+// is.
 func (r *organizationOwnerResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var data organizationOwnerModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
@@ -149,6 +164,9 @@ func (r *organizationOwnerResource) Read(ctx context.Context, req resource.ReadR
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
+// check reports an error unless the user is a member of the organization's
+// team Owners: with " not found: " in its detail when Forgejo answers 404
+// for the membership (see ReadOrganizationOwnerSummary).
 func (r *organizationOwnerResource) check(org, user string) diag.Diagnostics {
 	id, diags := r.ownersTeamID(org, ReadOrganizationOwnerSummary)
 	if diags.HasError() {
@@ -166,6 +184,8 @@ func (r *organizationOwnerResource) check(org, user string) diag.Diagnostics {
 	return diags
 }
 
+// Update only stores the plan: every attribute replaces the resource when
+// changed, so there is nothing to change in Forgejo.
 func (r *organizationOwnerResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var data organizationOwnerModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
@@ -175,7 +195,8 @@ func (r *organizationOwnerResource) Update(ctx context.Context, req resource.Upd
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-// Forgejo refuses to remove an organization's last owner.
+// Delete removes the user from the team Owners; a 404 (no longer a member)
+// counts as done. Forgejo refuses to remove an organization's last owner.
 func (r *organizationOwnerResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var data organizationOwnerModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)

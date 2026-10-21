@@ -5,6 +5,8 @@
 //
 // From crossplane/upjet-provider-template, changed for provider-forgejo.
 
+// Package providerconfig holds the controllers of the namespaced group's
+// provider configurations.
 package providerconfig
 
 import (
@@ -18,6 +20,9 @@ import (
 	"brobald.be/provider-forgejo/apis/namespaced/v1beta1"
 )
 
+// SetupWebhookWithManager registers ProviderConfig with the manager's webhook
+// server, as the generated controller packages do for their kinds. The
+// group's SetupWebhookWithManager (zz_setup.go) calls it; main calls neither.
 func SetupWebhookWithManager(mgr ctrl.Manager) error {
 	if err := ctrl.NewWebhookManagedBy(mgr, &v1beta1.ProviderConfig{}).
 		Complete(); err != nil {
@@ -26,6 +31,8 @@ func SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return nil
 }
 
+// Setup adds the ClusterProviderConfig and ProviderConfig controllers to the
+// manager, stopping at the first error.
 func Setup(mgr ctrl.Manager, o controller.Options) error {
 	if err := setupCluster(mgr, o); err != nil {
 		return err
@@ -33,6 +40,9 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 	return setupNamespaced(mgr, o)
 }
 
+// setupCluster adds the ClusterProviderConfig controller. It follows the
+// ProviderConfigUsages of each ClusterProviderConfig (reconciling it again
+// when one changes) and keeps it from being deleted while in use.
 func setupCluster(mgr ctrl.Manager, o controller.Options) error {
 	name := providerconfig.ControllerName(v1beta1.ClusterProviderConfigGroupKind)
 
@@ -52,6 +62,8 @@ func setupCluster(mgr ctrl.Manager, o controller.Options) error {
 			providerconfig.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))))) //nolint:staticcheck // suppress until crossplane-runtime offers the new recorder api
 }
 
+// setupNamespaced adds the ProviderConfig controller, which does the same for
+// the namespaced ProviderConfigs.
 func setupNamespaced(mgr ctrl.Manager, o controller.Options) error {
 	name := providerconfig.ControllerName(v1beta1.ProviderConfigGroupKind)
 
@@ -71,6 +83,9 @@ func setupNamespaced(mgr ctrl.Manager, o controller.Options) error {
 			providerconfig.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))))) //nolint:staticcheck // suppress until crossplane-runtime offers the new recorder api
 }
 
+// SetupGated registers Setup with the CRD gate, to run once the
+// ClusterProviderConfig, ProviderConfig and ProviderConfigUsage CRDs are
+// ready; a failure then is only logged. It always returns nil.
 func SetupGated(mgr ctrl.Manager, o controller.Options) error {
 	o.Gate.Register(func() {
 		if err := Setup(mgr, o); err != nil {

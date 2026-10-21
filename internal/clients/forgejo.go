@@ -5,6 +5,8 @@
 //
 // From crossplane/upjet-provider-template, changed for provider-forgejo.
 
+// Package clients gives Upjet the Terraform provider configuration of a
+// managed resource, from its ProviderConfig.
 package clients
 
 import (
@@ -34,8 +36,15 @@ const (
 	errUnmarshalCredentials = "cannot unmarshal forgejo credentials as JSON"
 )
 
+// credentialKeys are the credential fields passed to the Terraform provider
+// configuration, and the keys read from a Secret holding flat keys.
 var credentialKeys = []string{"host", "api_token", "username", "password"}
 
+// TerraformSetupBuilder returns the function Upjet calls whenever it connects
+// to a managed resource: it resolves the resource's ProviderConfig (recording
+// the usage), reads its credentials, and returns them as the Terraform
+// provider configuration, with a new instance of the provider compiled in.
+// Credentials without a host are an error.
 func TerraformSetupBuilder() terraform.SetupFn {
 	return func(ctx context.Context, client client.Client, mg resource.Managed) (terraform.Setup, error) {
 		ps := terraform.Setup{}
@@ -53,6 +62,8 @@ func TerraformSetupBuilder() terraform.SetupFn {
 			return ps, errors.New("the credentials have no host")
 		}
 
+		// Only the known fields, and only those present: an absent field
+		// stays unset rather than empty.
 		ps.Configuration = map[string]any{}
 		for _, k := range credentialKeys {
 			if v, ok := creds[k]; ok {
@@ -64,6 +75,11 @@ func TerraformSetupBuilder() terraform.SetupFn {
 	}
 }
 
+// extractCredentials returns the credential fields of a ProviderConfig spec.
+// From a Secret without the selected key, it takes the keys of
+// credentialKeys (others are ignored); otherwise it reads the data of the
+// source (the Secret's key, an environment variable or a file) as a JSON
+// object of strings. The sources None and InjectedIdentity fail.
 func extractCredentials(ctx context.Context, c client.Client, pcSpec *namespacedv1beta1.ProviderConfigSpec) (map[string]string, error) {
 	creds := map[string]string{}
 	sel := pcSpec.Credentials.CommonCredentialSelectors
@@ -72,6 +88,8 @@ func extractCredentials(ctx context.Context, c client.Client, pcSpec *namespaced
 		if err := c.Get(ctx, types.NamespacedName{Namespace: sel.SecretRef.Namespace, Name: sel.SecretRef.Name}, secret); err != nil {
 			return nil, errors.Wrap(err, errExtractCredentials)
 		}
+		// No such key: flat keys. With the key, fall through to the common
+		// extractor, which reads the Secret again.
 		if _, ok := secret.Data[sel.SecretRef.Key]; !ok {
 			for _, k := range credentialKeys {
 				if v, ok := secret.Data[k]; ok {
@@ -91,6 +109,9 @@ func extractCredentials(ctx context.Context, c client.Client, pcSpec *namespaced
 	return creds, nil
 }
 
+// toSharedPCSpec converts a cluster-scoped ProviderConfig's spec to the
+// namespaced spec type (same fields) by a JSON round trip, so the rest handles
+// one type. A nil ProviderConfig gives nil and no error.
 func toSharedPCSpec(pc *clusterv1beta1.ProviderConfig) (*namespacedv1beta1.ProviderConfigSpec, error) {
 	if pc == nil {
 		return nil, nil
@@ -105,6 +126,11 @@ func toSharedPCSpec(pc *clusterv1beta1.ProviderConfig) (*namespacedv1beta1.Provi
 	return &mSpec, err
 }
 
+// resolveProviderConfig returns the spec of the ProviderConfig a managed
+// resource references and records that the resource uses it. Cluster-scoped
+// (legacy) resources reference a cluster-scoped ProviderConfig; namespaced
+// (modern) ones a ProviderConfig of their namespace or a
+// ClusterProviderConfig.
 func resolveProviderConfig(ctx context.Context, crClient client.Client, mg resource.Managed) (*namespacedv1beta1.ProviderConfigSpec, error) {
 	switch managed := mg.(type) {
 	case resource.LegacyManaged: //nolint:staticcheck // still handling cluster-scoped behavior
@@ -116,6 +142,8 @@ func resolveProviderConfig(ctx context.Context, crClient client.Client, mg resou
 	}
 }
 
+// resolveLegacy resolves the cluster-scoped ProviderConfig of a cluster-scoped
+// managed resource and records a cluster-scoped ProviderConfigUsage.
 func resolveLegacy(ctx context.Context, client client.Client, mg resource.LegacyManaged) (*namespacedv1beta1.ProviderConfigSpec, error) { //nolint:staticcheck // still handling cluster-scoped behavior
 	configRef := mg.GetProviderConfigReference()
 	if configRef == nil {
@@ -134,12 +162,17 @@ func resolveLegacy(ctx context.Context, client client.Client, mg resource.Legacy
 	return toSharedPCSpec(pc)
 }
 
+// resolveModern resolves the ProviderConfig or ClusterProviderConfig of a
+// namespaced managed resource and records a ProviderConfigUsage. An unknown
+// kind in the reference is an error.
 func resolveModern(ctx context.Context, crClient client.Client, mg resource.ModernManaged) (*namespacedv1beta1.ProviderConfigSpec, error) {
 	configRef := mg.GetProviderConfigReference()
 	if configRef == nil {
 		return nil, errors.New(errNoProviderConfig)
 	}
 
+	// The reference's kind picks the type; only a ProviderConfig is looked up
+	// in the resource's namespace.
 	pcRuntimeObj, err := crClient.Scheme().New(namespacedv1beta1.SchemeGroupVersion.WithKind(configRef.Kind))
 	if err != nil {
 		return nil, errors.Wrap(err, "unknown GVK for ProviderConfig")

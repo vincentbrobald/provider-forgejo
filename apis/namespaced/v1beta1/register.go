@@ -16,16 +16,23 @@ import (
 )
 
 const (
-	Group   = "forgejo.m.crossplane.brobald.be"
+	// Group is the API group of the provider's namespaced kinds.
+	Group = "forgejo.m.crossplane.brobald.be"
+	// Version is the API version of this package.
 	Version = "v1beta1"
 )
 
 var (
+	// SchemeGroupVersion is the group and version of this package.
 	SchemeGroupVersion = schema.GroupVersion{Group: Group, Version: Version}
 
+	// SchemeBuilder adds this package's kinds to a scheme; the AddToScheme
+	// of apis/namespaced includes it.
 	SchemeBuilder = runtime.NewSchemeBuilder()
 )
 
+// ProviderConfig type metadata: its kind name, group kind, kind with API
+// version, and group version kind.
 var (
 	ProviderConfigKind             = reflect.TypeOf(ProviderConfig{}).Name()
 	ProviderConfigGroupKind        = schema.GroupKind{Group: Group, Kind: ProviderConfigKind}.String()
@@ -33,6 +40,7 @@ var (
 	ProviderConfigGroupVersionKind = SchemeGroupVersion.WithKind(ProviderConfigKind)
 )
 
+// ClusterProviderConfig type metadata.
 var (
 	ClusterProviderConfigKind             = reflect.TypeOf(ClusterProviderConfig{}).Name()
 	ClusterProviderConfigGroupKind        = schema.GroupKind{Group: Group, Kind: ClusterProviderConfigKind}.String()
@@ -40,6 +48,7 @@ var (
 	ClusterProviderConfigGroupVersionKind = SchemeGroupVersion.WithKind(ClusterProviderConfigKind)
 )
 
+// ProviderConfigUsage and ProviderConfigUsageList type metadata.
 var (
 	ProviderConfigUsageKind             = reflect.TypeOf(ProviderConfigUsage{}).Name()
 	ProviderConfigUsageGroupKind        = schema.GroupKind{Group: Group, Kind: ProviderConfigUsageKind}.String()
@@ -52,6 +61,8 @@ var (
 	ProviderConfigUsageListGroupVersionKind = SchemeGroupVersion.WithKind(ProviderConfigUsageListKind)
 )
 
+// init has SchemeBuilder register ProviderConfig, ClusterProviderConfig, ProviderConfigUsage and their
+// lists under SchemeGroupVersion.
 func init() {
 	SchemeBuilder.Register(func(s *runtime.Scheme) error {
 		s.AddKnownTypes(SchemeGroupVersion,

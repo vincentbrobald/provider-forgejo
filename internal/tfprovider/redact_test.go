@@ -10,6 +10,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 )
 
+// TestRedact checks that the given secrets and the credentials Forgejo echoes
+// are removed and the rest of the message kept.
 func TestRedact(t *testing.T) {
 	detail := "Forgejo Client Error: token is malformed\nuser does not exist [uid: 0, name: ci-x]\n" +
 		"access token does not exist [sha: s3cretPassw0rd]\ntask with token \"s3cretPassw0rd\": resource does not exist\n" +

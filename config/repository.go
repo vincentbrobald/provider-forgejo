@@ -7,6 +7,9 @@ import (
 	ujconfig "github.com/crossplane/upjet/v2/pkg/config"
 )
 
+// configureRepositoryKinds puts the repository resources in the group
+// "repository" with their kinds, and configures their references, the
+// repository's id and the webhook's secret config.
 func configureRepositoryKinds(p *ujconfig.Provider) {
 	for name, kind := range map[string]string{
 		"forgejo_deploy_key":         "DeployKey",
@@ -32,12 +35,15 @@ func configureRepositoryKinds(p *ujconfig.Provider) {
 		r.References["owner"] = ujconfig.Reference{TerraformName: "forgejo_organization"}
 	})
 
+	// The objects of a repository select it by its numeric ID.
 	for _, name := range []string{"forgejo_deploy_key", "forgejo_repository_webhook", "forgejo_collaborator", "forgejo_branch_protection"} {
 		p.AddResourceConfigurator(name, func(r *ujconfig.Resource) {
 			r.References["repository_id"] = ujconfig.Reference{TerraformName: "forgejo_repository"}
 		})
 	}
 
+	// A team repository names its repository: the reference takes the
+	// Repository's spec.forProvider.name, not its ID.
 	p.AddResourceConfigurator("forgejo_team_repository", func(r *ujconfig.Resource) {
 		r.References["team_id"] = ujconfig.Reference{TerraformName: "forgejo_team"}
 		r.References["repository"] = ujconfig.Reference{
@@ -62,8 +68,14 @@ func configureRepositoryKinds(p *ujconfig.Provider) {
 	})
 }
 
+// idAsString is a Terraform conversion that turns a numeric "id" of the
+// Terraform state into its decimal string, as the CRDs type every id as a
+// string.
 type idAsString struct{}
 
+// Convert replaces a non-string params["id"] with its string when converting
+// from Terraform; it changes params in place and returns it. Other
+// directions, and missing, nil or string ids, pass unchanged.
 func (idAsString) Convert(params map[string]any, _ *ujconfig.Resource, mode ujconfig.Mode) (map[string]any, error) {
 	if mode != ujconfig.FromTerraform {
 		return params, nil
